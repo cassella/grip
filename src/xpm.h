@@ -75,4 +75,28 @@
 #include "../pixmaps/gcd.xpm"
 #endif
 
+#include "../pixmaps/newset-all.xpm"
+#include "../pixmaps/newset-following.xpm"
+#include "../pixmaps/newset-following-strictly.xpm"
+#include "../pixmaps/newset-preceding.xpm"
+#include "../pixmaps/newset-preceding-strictly.xpm"
+#include "../pixmaps/removeset.xpm"
+
+#include "../pixmaps/split-track.xpm"
+#include "../pixmaps/join-to-prev.xpm"
+#include "../pixmaps/join-to-next.xpm"
+#include "../pixmaps/remove-track.xpm"
+
+#include "../pixmaps/move-beginning-back-adjust.xpm"
+#include "../pixmaps/move-beginning-forward-adjust.xpm"
+#include "../pixmaps/move-beginning-forward-noadjust.xpm"
+#include "../pixmaps/move-beginning-here-noadjust.xpm"
+#include "../pixmaps/move-beginning-here-adjust.xpm"
+#include "../pixmaps/move-end-here-adjust.xpm"
+#include "../pixmaps/move-end-here-noadjust.xpm"
+#include "../pixmaps/move-end-back-noadjust.xpm"
+#include "../pixmaps/move-end-back-adjust.xpm"
+#include "../pixmaps/move-end-forward-adjust.xpm"
+
+
 #endif /* GRIP_XPM_H */
