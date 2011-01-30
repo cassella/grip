@@ -1,6 +1,6 @@
 AC_PREREQ(2.52)
 
-AC_INIT(grip, 3.3.1, http://sf.net/tracker/?group_id=3714&atid=103714)
+AC_INIT(grip, 3.3.1-vtracks, http://sf.net/tracker/?group_id=3714&atid=103714)
 AC_CONFIG_SRCDIR(src/main.c)
 AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
 
