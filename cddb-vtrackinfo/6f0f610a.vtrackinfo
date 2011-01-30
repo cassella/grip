@@ -1,0 +1,10 @@
+# This is a vtrackinfo file for a CD that only needs
+# adjustments made for the last track (physical track 9 in this case)
+#
+# All previous tracks (0-8) will be copied from the physical tracks.
+VTITLE9=Blind
+VFRAMES9=172770-190370
+VTITLE10=Four Seven
+VFRAMES10=199670-211670
+VTITLE11=Rehearsal
+VFRAMES11=211671-249998
