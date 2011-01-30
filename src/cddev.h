@@ -55,6 +55,11 @@ typedef struct _track_info {
   unsigned char flags;
 } TrackInfo;
 
+typedef struct _disc_info_instance {
+  TrackInfo tracks[MAX_TRACKS];
+  int num_tracks;
+} DiscInfoInstance;
+
 /* Disc information such as current track, amount played, etc */
 typedef struct _disc_info {
   int cd_desc;                              /* CD device file desc. */
@@ -67,8 +72,6 @@ typedef struct _disc_info {
   DiscTime length;		            /* Total disc length */
   int curr_frame;			    /* Current frame */
   int curr_track;		            /* Current track */
-  int num_tracks;		            /* Number of tracks on disc */
-  TrackInfo track[MAX_TRACKS];	            /* Track specific information */
 } DiscInfo;
 
 /* Channle volume structure */
@@ -83,16 +86,19 @@ typedef struct _disc_volume {
    ChannelVolume vol_back;
 } DiscVolume;
 
+int frame_to_ptrack(Disc *disc, long frame);
+int track_start_to_ptrack(Disc *disc, int track);
+int track_end_to_ptrack(Disc *disc, int track);
 
 gboolean CDInitDevice(char *device_name,DiscInfo *disc);
 gboolean CDCloseDevice(DiscInfo *disc);
-gboolean CDStat(DiscInfo *disc,gboolean read_toc);
-gboolean IsDataTrack(DiscInfo *disc,int track);
+gboolean CDStat(Disc *disc, gboolean read_toc);
+gboolean IsDataTrack(Disc *disc, int track);
 gboolean CDPlayFrames(DiscInfo *disc,int startframe,int endframe);
-gboolean CDPlayTrackPos(DiscInfo *disc,int starttrack,
+gboolean CDPlayTrackPos(Disc *disc, int starttrack,
 			int endtrack,int startpos);
-gboolean CDPlayTrack(DiscInfo *disc,int starttrack,int endtrack);
-gboolean CDAdvance(DiscInfo *disc,DiscTime *time);
+gboolean CDPlayTrack(Disc *disc, int starttrack, int endtrack);
+gboolean CDAdvance(Disc *disc,DiscTime *time);
 gboolean CDStop(DiscInfo *disc);
 gboolean CDPause(DiscInfo *disc);
 gboolean CDResume(DiscInfo *disc);

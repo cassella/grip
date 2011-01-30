@@ -28,6 +28,7 @@
 typedef struct _encode_track {
   GripInfo *ginfo;
   int track_num;
+  int v_track_num;
   int start_frame;
   int end_frame;
   char song_name[256];
@@ -66,8 +67,9 @@ void DoRip(GtkWidget *widget,gpointer data);
 void FillInTrackInfo(GripInfo *ginfo,int track,EncodeTrack *new_track);
 
 #ifdef CDPAR
-gboolean CDPRip(char *device,char *generic_scsi_device,int track,
-		long first_sector,long last_sector,
+gboolean CDPRip(char *device,char *generic_scsi_device,
+		DiscInfo *disc,
+		int track, long first_sector,long last_sector,
 		char *outfile,int paranoia_mode,int *rip_smile_level,
 		gfloat *rip_percent_done,gboolean *stop_thread_rip_now,
 		gboolean do_gain_calc,FILE *output_fp);

@@ -42,5 +42,6 @@ void ChangeDoubleVal(GtkWidget *widget,gpointer data);
 GtkWidget *MakeDoubleEntry(GtkWidget **entry,gdouble *var,char *name);
 void ChangeBoolVal(GtkWidget *widget,gpointer data);
 GtkWidget *MakeCheckButton(GtkWidget **button,gboolean *var,char *name);
+void RetargetCheckButton(GtkWidget *widget, gboolean *var, gboolean *oldvar);
 
 #endif /* GRIP_DIALOG_H */

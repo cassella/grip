@@ -24,6 +24,8 @@
 #ifndef GRIP_H
 #define GRIP_H
 
+typedef struct _disc Disc;
+
 #include "config.h"
 #include <gnome.h>
 #include "cddev.h"
@@ -59,6 +61,18 @@
 
 #endif
 
+
+typedef struct _disc_gui_instance {
+  GtkWidget *disc_name_label;
+  GtkWidget *disc_artist_label;
+  GtkWidget *trackpage;
+  gchar *tab_label_text;
+  GtkListStore *track_list_store;
+  GtkWidget *track_list;
+  GtkTreeViewColumn *rip_column;
+  GtkTooltips *tabtooltips;
+} DiscGuiInstance;
+
 typedef struct _grip_gui {
   GtkWidget *app;
   GtkWidget *winbox;
@@ -75,10 +89,9 @@ typedef struct _grip_gui {
   GtkStyle *style_LCD;
   GtkStyle *style_dark_grey;
 
-  GtkWidget *disc_name_label;
-  GtkWidget *disc_artist_label;
-  GtkListStore *track_list_store;
-  GtkWidget *track_list;
+  DiscGuiInstance p_instance;
+  DiscGuiInstance *v_instance;
+  DiscGuiInstance *instance;
 
   GtkWidget *current_track_label;
   int time_display_mode;
@@ -110,6 +123,13 @@ typedef struct _grip_gui {
   GtkWidget *loop_indicator;
   gboolean track_prog_visible;
 
+  gboolean vtrack_edit_visible;
+  GtkWidget *vtrack_edit_button;
+  GtkWidget *vtrack_edit_box;
+
+  GtkWidget *vtrack_separator;
+
+
   GtkWidget *volume_control;
   gboolean volvis;
 
@@ -117,6 +137,7 @@ typedef struct _grip_gui {
   StatusWindow *rip_status_window;
   StatusWindow *encode_status_window;
 
+  GtkWidget *rip_page;
   GtkWidget *play_sector_label;
 
   GtkWidget *partial_rip_box;
@@ -180,7 +201,7 @@ typedef struct _grip_gui {
   GtkWidget *smile_pix[8];
 
   GtkWidget *play_pix[3];
-  
+
   /* notification area widgets */
   EggTrayIcon *tray_icon;
   GtkTooltips *tray_tips;
@@ -188,14 +209,103 @@ typedef struct _grip_gui {
   GtkWidget *tray_menu;
   GtkWidget *tray_menu_play;
   GtkWidget *tray_menu_pause;
+
+
+  /* vtrack editing stuff */
+  GtkTooltips *vtracktooltips;
+  int vtrack_buttons_sensitive; /* bitmask -- see vtracks.c */
+
+  GtkWidget *newset_all_image;
+  GtkWidget *newset_following_image;
+  GtkWidget *newset_following_strictly_image;
+  GtkWidget *newset_preceding_image;
+  GtkWidget *newset_preceding_strictly_image;
+  GtkWidget *removeset_image;
+
+  GtkButton *newset_all_button;
+  GtkButton *newset_following_button;
+  GtkButton *newset_following_strictly_button;
+  GtkButton *newset_preceding_button;
+  GtkButton *newset_preceding_strictly_button;
+  GtkButton *removeset_button;
+
+  GtkWidget *split_track_image;
+  GtkWidget *join_to_prev_image;
+  GtkWidget *join_to_next_image;
+  GtkWidget *remove_track_image;
+
+  GtkButton *split_track_button;
+  GtkButton *join_to_prev_button;
+  GtkButton *join_to_next_button;
+  GtkButton *remove_track_button;
+
+  GtkWidget *move_beginning_here_adjust_image;
+  GtkWidget *move_beginning_here_noadjust_image;
+  GtkWidget *move_beginning_forward_adjust_image;
+  GtkWidget *move_beginning_forward_noadjust_image;
+  GtkWidget *move_beginning_back_adjust_image;
+
+  GtkButton *move_beginning_here_adjust_button;
+  GtkButton *move_beginning_here_noadjust_button;
+  GtkButton *move_beginning_forward_adjust_button;
+  GtkButton *move_beginning_forward_noadjust_button;
+  GtkButton *move_beginning_back_adjust_button;
+
+  GtkWidget *move_end_here_adjust_image;
+  GtkWidget *move_end_here_noadjust_image;
+  GtkWidget *move_end_back_adjust_image;
+  GtkWidget *move_end_back_noadjust_image;
+  GtkWidget *move_end_forward_adjust_image;
+
+  GtkButton *move_end_here_adjust_button;
+  GtkButton *move_end_here_noadjust_button;
+  GtkButton *move_end_back_adjust_button;
+  GtkButton *move_end_back_noadjust_button;
+  GtkButton *move_end_forward_adjust_button;
+
+  GtkWidget *adjustment_count_spin_button;
+  GtkWidget *adjustment_unit_combo;
+
+  GtkWidget *set_vtracknum_spin_button;
+  GtkWidget *set_vtracknum_adjust_check_button;
 } GripGUI;
 
 struct _encode_track;
 
+typedef struct _disc_instance {
+  DiscDataInstance data;
+  DiscInfoInstance info;
+} DiscInstance;
+
+struct _disc {
+  DiscInfo info;
+  DiscData data;
+
+  DiscInstance *instance;
+
+  DiscInstance p_instance;
+  DiscInstance *v_instance;
+
+  gint num_vtrack_sets;
+
+ /* Set if we think we've done something wrong with the vtracks, so we
+  * don't overwrite the vtrackinfo file in this case. */
+  gboolean vtrack_problems;
+
+  /* Used during trackset creation -- this is the instance that was
+   * selected before we changed to phystracks in order to remove the vtrack
+   * notebook pages. */
+
+#define SAVED_INSTANCE_NONE -2
+#define SAVED_INSTANCE_PHYS -1
+
+  int saved_instance_offset;
+};
+
 typedef struct _grip_info {
   char version[256];
-  DiscInfo disc;
-  DiscData ddata;
+  Disc Disc;
+
   gboolean use_proxy;
   gboolean use_proxy_env;
   ProxyServer proxy_server;

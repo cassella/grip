@@ -31,6 +31,7 @@
 #endif
 #include <ctype.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/stat.h>
 #include <string.h>
 #include <pwd.h>
@@ -38,27 +39,29 @@
 #include <unistd.h>
 #include <curl/curl.h>
 #include <curl/easy.h>
+#include "grip.h"
 #include "cddev.h"
 #include "discdb.h"
 #include "grip_id3.h"
 #include "common.h"
 #include "config.h"
+#include "vtracks.h"
 
 extern char *Program;
 static char *StrConvertEncoding(char *str,char *from,char *to,int max_len);
-gboolean DiscDBUTF8Validate(const DiscInfo *disc,const DiscData *data);
-static void DiscDBConvertEncoding(DiscInfo *disc,DiscData *data,
-                                  char *from,char *to);
+gboolean DiscDBUTF8Validate(const Disc *Disc);
+static void DiscDBConvertEncoding(Disc *Disc,char *from,char *to);
+
 static int DiscDBSum(int val);
 static char *DiscDBReadLine(char **dataptr);
 static GString *DiscDBMakeURI(DiscDBServer *server,DiscDBHello *hello,
 			      char *cmd);
 static char *DiscDBMakeRequest(DiscDBServer *server,DiscDBHello *hello,
 			       char *cmd);
-static void DiscDBProcessLine(char *inbuffer,DiscData *data,
-			    int numtracks);
-static void DiscDBWriteLine(char *header,int num,char *data,FILE *outfile,
+static void DiscDBProcessLine(char *inbuffer,Disc *disc);
+void DiscDBWriteLine(char *header,int num,char *data,FILE *outfile,
                             char *encoding);
+
 
 static char *discdb_genres[]={"unknown","blues","classical","country",
 			    "data","folk","jazz","misc","newage",
@@ -81,20 +84,22 @@ static int DiscDBSum(int val)
 
 /* Produce DiscDB ID for CD currently in CD-ROM */
 
-unsigned int DiscDBDiscid(DiscInfo *disc)
+unsigned int DiscDBDiscid(Disc *Disc)
 {
+  DiscInfo *disc = &Disc->info;
+  DiscInfoInstance *pins = &Disc->p_instance.info;
   int index, tracksum = 0, discid;
   
-  if(!disc->have_info) CDStat(disc,TRUE);
+  if(!disc->have_info) CDStat(Disc, TRUE);
   
-  for(index = 0; index < disc->num_tracks; index++)
-    tracksum += DiscDBSum(disc->track[index].start_pos.mins * 60 +
-			disc->track[index].start_pos.secs);
+  for(index = 0; index < pins->num_tracks; index++)
+    tracksum += DiscDBSum(pins->tracks[index].start_pos.mins * 60 +
+			pins->tracks[index].start_pos.secs);
   
   discid = (disc->length.mins * 60 + disc->length.secs) -
-    (disc->track[0].start_pos.mins * 60 + disc->track[0].start_pos.secs);
+    (pins->tracks[0].start_pos.mins * 60 + pins->tracks[0].start_pos.secs);
   
-  return (tracksum % 0xFF) << 24 | discid << 8 | disc->num_tracks;
+  return (tracksum % 0xFF) << 24 | discid << 8 | pins->num_tracks;
 }
 
 /* Convert numerical genre to text */
@@ -262,9 +267,11 @@ static char *DiscDBMakeRequest(DiscDBServer *server,DiscDBHello *hello,
 
 /* Query the DiscDB for the CD currently in the CD-ROM */
 
-gboolean DiscDBDoQuery(DiscInfo *disc,DiscDBServer *server,
+gboolean DiscDBDoQuery(Disc *Disc,DiscDBServer *server,
 		       DiscDBHello *hello,DiscDBQuery *query)
 {
+  DiscInfo *disc = &Disc->info;
+  DiscInfoInstance *pins = &Disc->p_instance.info;
   int index;
   GString *cmd;
   char *result,*inbuffer;
@@ -272,15 +279,15 @@ gboolean DiscDBDoQuery(DiscInfo *disc,DiscDBServer *server,
 
   query->query_matches=0;
 
-  if(!disc->have_info) CDStat(disc,TRUE);
+  if(!disc->have_info) CDStat(Disc,TRUE);
 
   cmd=g_string_new(NULL);
 
-  g_string_sprintfa(cmd,"cddb+query+%08x+%d",DiscDBDiscid(disc),
-		    disc->num_tracks);
+  g_string_sprintfa(cmd, "cddb+query+%08x+%d", DiscDBDiscid(Disc),
+		    pins->num_tracks);
 
-  for(index=0;index<disc->num_tracks;index++)
-    g_string_sprintfa(cmd,"+%d",disc->track[index].start_frame);
+  for(index = 0; index < pins->num_tracks; index++)
+    g_string_sprintfa(cmd, "+%d", pins->tracks[index].start_frame);
 
   g_string_sprintfa(cmd,"+%d",disc->length.mins*60 + disc->length.secs);
 
@@ -335,6 +342,11 @@ gboolean DiscDBDoQuery(DiscInfo *disc,DiscDBServer *server,
 		       "/");
       
       query->query_matches++;
+      if (query->query_matches >= MAX_INEXACT_MATCHES) {
+	      g_warning ("Too many exact matches; truncating list at %d",
+			 MAX_INEXACT_MATCHES);
+	      break;
+      }
     }
    break;
     /* 211 - inexact match */
@@ -356,6 +368,11 @@ gboolean DiscDBDoQuery(DiscInfo *disc,DiscDBServer *server,
 		       "/");
       
       query->query_matches++;
+      if (query->query_matches >= MAX_INEXACT_MATCHES) {
+	      g_warning ("Too many inexact matches; truncating list at %d",
+			 MAX_INEXACT_MATCHES);
+	      break;
+      }
     }
     
     break;
@@ -394,9 +411,11 @@ void DiscDBParseTitle(char *buf,char *title,char *artist,char *sep)
 
 /* Process a line of input data */
 
-static void DiscDBProcessLine(char *inbuffer,DiscData *data,
-                              int numtracks)
+static void DiscDBProcessLine(char *inbuffer, Disc *Disc)
 {
+  DiscData *data = &Disc->data;
+  DiscDataInstance *pins = &Disc->p_instance.data;
+  int numtracks = Disc->p_instance.info.num_tracks;
   int track;
   int len=0;
   char *st;
@@ -407,9 +426,8 @@ static void DiscDBProcessLine(char *inbuffer,DiscData *data,
     data->revision=atoi(inbuffer+12);
   }
   else if(!strncasecmp(inbuffer,"DTITLE",6)) {
-    len=strlen(data->data_title);
-
-    g_snprintf(data->data_title+len,256-len,"%s",inbuffer+7);
+    len = strlen(pins->title);
+    g_snprintf(pins->title + len, 256 - len, "%s", inbuffer + 7);
   }
   else if(!strncasecmp(inbuffer,"DYEAR",5)) {
     strtok(inbuffer,"=");
@@ -418,7 +436,7 @@ static void DiscDBProcessLine(char *inbuffer,DiscData *data,
     if(st == NULL)
         return;
 
-    data->data_year=atoi(g_strstrip(st));
+	pins->year = atoi(g_strstrip(st));
   }
   else if(!strncasecmp(inbuffer,"DGENRE",6)) {
     strtok(inbuffer,"=");
@@ -430,8 +448,8 @@ static void DiscDBProcessLine(char *inbuffer,DiscData *data,
     st=g_strstrip(st);
 
     if(*st) {
-      data->data_genre=DiscDBGenreValue(st);
-      data->data_id3genre=ID3GenreValue(st);
+	  pins->genre = DiscDBGenreValue(st);
+	  pins->id3genre = ID3GenreValue(st);
     }
   }
   else if(!strncasecmp(inbuffer,"DID3",4)) {
@@ -441,61 +459,59 @@ static void DiscDBProcessLine(char *inbuffer,DiscData *data,
     if(st == NULL)
         return;
     
-    data->data_id3genre=atoi(g_strstrip(st));
+    pins->id3genre = atoi(g_strstrip(st));
   }
   else if(!strncasecmp(inbuffer,"TTITLE",6)) {
     track=atoi(strtok(inbuffer+6,"="));
     
     if(track<numtracks)
-      len=strlen(data->data_track[track].track_name);
+      len = strlen(pins->tracks[track].track_name);
 
     st = strtok(NULL, "");
-    if(st == NULL)
-        return;    
-    
-    g_snprintf(data->data_track[track].track_name+len,256-len,"%s",
-	    st);
+    if (st == NULL)
+	    return;
+
+    g_snprintf(pins->tracks[track].track_name + len, 256 - len, "%s",
+	       st);
   }
   else if(!strncasecmp(inbuffer,"TARTIST",7)) {
-    data->data_multi_artist=TRUE;
+    pins->multi_artist = TRUE;
 
     track=atoi(strtok(inbuffer+7,"="));
     
     if(track<numtracks)
-      len=strlen(data->data_track[track].track_artist);
+      len=strlen(pins->tracks[track].track_artist);
 
     st = strtok(NULL, "");
     if(st == NULL)
         return;    
     
-    g_snprintf(data->data_track[track].track_artist+len,256-len,"%s",
-	    st);
+    g_snprintf(pins->tracks[track].track_artist + len, 256 - len, "%s", st);
   }
   else if(!strncasecmp(inbuffer,"EXTD",4)) {
-    len=strlen(data->data_extended);
+    len = strlen(pins->extended);
 
-    g_snprintf(data->data_extended+len,4096-len,"%s",inbuffer+5);
+    g_snprintf(pins->extended + len, 4096 - len, "%s", inbuffer+5);
   }
   else if(!strncasecmp(inbuffer,"EXTT",4)) {
     track=atoi(strtok(inbuffer+4,"="));
     
     if(track<numtracks)
-      len=strlen(data->data_track[track].track_extended);
+      len = strlen(pins->tracks[track].track_extended);
 
     st = strtok(NULL, "");
     if(st == NULL)
         return;
     
-    g_snprintf(data->data_track[track].track_extended+len,4096-len,"%s",
-	    st);
+    g_snprintf(pins->tracks[track].track_extended + len, 4096 - len, "%s", st);
   }
   else if(!strncasecmp(inbuffer,"PLAYORDER",5)) {
-    len=strlen(data->data_playlist);
-
-    g_snprintf(data->data_playlist+len,256-len,"%s",inbuffer+10);
+    len = strlen(pins->playlist);
+	g_snprintf(pins->playlist + len, 256 - len, "%s", inbuffer + 10);
   }
 }
 
+ 
 static char *StrConvertEncoding(char *str,char *from,char *to,int max_len)
 {
   char *conv_str;
@@ -514,75 +530,86 @@ static char *StrConvertEncoding(char *str,char *from,char *to,int max_len)
   return str;
 }
 
-gboolean DiscDBUTF8Validate(const DiscInfo *disc,const DiscData *data)
+gboolean DiscDBUTF8Validate(const Disc *Disc)
 {
+  const DiscInfoInstance *disc = &Disc->instance->info;
+  const DiscDataInstance *data = &Disc->instance->data;
   int track;
 
-  if(data->data_title && !g_utf8_validate(data->data_title,-1,NULL))
+  if(data->title && !g_utf8_validate(data->title,-1,NULL))
     return FALSE;
-  if(data->data_artist && !g_utf8_validate(data->data_artist,-1,NULL))
+  if(data->artist && !g_utf8_validate(data->artist,-1,NULL))
     return FALSE;
-  if(data->data_extended && !g_utf8_validate(data->data_extended,-1,NULL))
+  if(data->extended && !g_utf8_validate(data->extended,-1,NULL))
     return FALSE;
 
   for(track=0;track<disc->num_tracks;track++) {
-  if(data->data_track[track].track_name
-     && !g_utf8_validate(data->data_track[track].track_name,-1,NULL))
+  if(data->tracks[track].track_name
+     && !g_utf8_validate(data->tracks[track].track_name,-1,NULL))
     return FALSE;
-  if(data->data_track[track].track_artist
-     && !g_utf8_validate(data->data_track[track].track_artist,-1,NULL))
+  if(data->tracks[track].track_artist
+     && !g_utf8_validate(data->tracks[track].track_artist,-1,NULL))
     return FALSE;
-  if(data->data_track[track].track_extended
-     && !g_utf8_validate(data->data_track[track].track_extended,-1,NULL))
+  if(data->tracks[track].track_extended
+     && !g_utf8_validate(data->tracks[track].track_extended,-1,NULL))
     return FALSE;
   }
   return TRUE;
 }
 
-
-static void DiscDBConvertEncoding(DiscInfo *disc,DiscData *data,
-                                  char *from,char *to)
+static void DiscDBConvertEncoding(Disc *Disc,char *from,char *to)
 {
   int track;
+  DiscDataInstance *dins = &Disc->instance->data;
+  DiscInfoInstance *iins = &Disc->instance->info;
 
-  StrConvertEncoding(data->data_title,from,to,256);
-  StrConvertEncoding(data->data_artist,from,to,256);
-  StrConvertEncoding(data->data_extended,from,to,4096);
+  StrConvertEncoding(dins->title,from,to,256);
+  StrConvertEncoding(dins->artist,from,to,256);
+  StrConvertEncoding(dins->extended,from,to,4096);
 
-  for(track=0;track<disc->num_tracks;track++) {
-    StrConvertEncoding(data->data_track[track].track_name,from,to,256);
-    StrConvertEncoding(data->data_track[track].track_artist,from,to,256);
-    StrConvertEncoding(data->data_track[track].track_extended,from,to,4096);
+  for(track=0;track<iins->num_tracks;track++) {
+    TrackData *tr = &dins->tracks[track];
+    StrConvertEncoding(tr->track_name,from,to,256);
+    StrConvertEncoding(tr->track_artist,from,to,256);
+    StrConvertEncoding(tr->track_extended,from,to,4096);
   }
 }
-
+  
 /* Read the actual DiscDB entry */
 
-gboolean DiscDBRead(DiscInfo *disc,DiscDBServer *server,
-		    DiscDBHello *hello,DiscDBEntry *entry,
-		    DiscData *data,char *encoding)
+gboolean DiscDBRead(Disc *Disc, DiscDBServer *server,
+		    DiscDBHello *hello, DiscDBEntry *entry,
+		    char *encoding)
 {
+  DiscInfo *disc = &Disc->info;
+  DiscData *data = &Disc->data;
+  DiscDataInstance *pins = &Disc->p_instance.data;
   int index;
   GString *cmd;
   char *result,*inbuffer,*dataptr;
+
+  g_assert(Disc->v_instance == NULL);
+  g_assert(Disc->instance == &Disc->p_instance);
   
-  if(!disc->have_info) CDStat(disc,TRUE);
+  if(!disc->have_info) CDStat(Disc, TRUE);
   
-  data->data_genre=entry->entry_genre;
-  data->data_id=DiscDBDiscid(disc);
-  *(data->data_extended)='\0';
-  *(data->data_title)='\0';
-  *(data->data_artist)='\0';
-  *(data->data_playlist)='\0';
-  data->data_multi_artist=FALSE;
-  data->data_year=0;
-  data->data_id3genre=-1;
+  data->data_id = DiscDBDiscid(Disc);
   data->revision=-1;
 
+  pins->genre = entry->entry_genre;
+  pins->extended[0] = '\0';
+  pins->title[0] = '\0';
+  pins->artist[0] = '\0';
+  pins->playlist[0] = '\0';
+  pins->multi_artist = FALSE;
+  pins->year = 0;
+  pins->id3genre = -1;
+
   for(index=0;index<MAX_TRACKS;index++) {
-    *(data->data_track[index].track_name)='\0';
-    *(data->data_track[index].track_artist)='\0';
-    *(data->data_track[index].track_extended)='\0';
+    pins->tracks[index].track_name[0] = '\0';
+    pins->tracks[index].track_artist[0] = '\0';
+    pins->tracks[index].track_extended[0] = '\0';
+    pins->tracks[index].vtracknum = index + 1;
   }
 
   cmd=g_string_new(NULL);
@@ -603,20 +630,20 @@ gboolean DiscDBRead(DiscInfo *disc,DiscDBServer *server,
   inbuffer=DiscDBReadLine(&dataptr);
 
   while((inbuffer=DiscDBReadLine(&dataptr)))
-    DiscDBProcessLine(inbuffer,data,disc->num_tracks);
+    DiscDBProcessLine(inbuffer, Disc);
 
   /* Both disc title and artist have been stuffed in the title field, so the
      need to be separated */
   
-  DiscDBParseTitle(data->data_title,data->data_title,data->data_artist,"/");
+  DiscDBParseTitle(pins->title, pins->title, pins->artist, "/");  
 
   free(result);
 
   /* Don't allow the genre to be overwritten */
-  data->data_genre=entry->entry_genre;
+  pins->genre = entry->entry_genre;
 
   if(strcasecmp(encoding,"utf-8")) {
-    DiscDBConvertEncoding(disc,data,encoding,"utf-8");
+    DiscDBConvertEncoding(Disc,encoding,"utf-8");
   }
 
   return TRUE;
@@ -624,15 +651,16 @@ gboolean DiscDBRead(DiscInfo *disc,DiscDBServer *server,
 
 /* See if a disc is in the local database */
 
-gboolean DiscDBStatDiscData(DiscInfo *disc)
+gboolean DiscDBStatDiscData(Disc *Disc)
 {
+  DiscInfo *disc = &Disc->info;
   int index,id;
   struct stat st;
   char root_dir[256],file[256];
   
-  if(!disc->have_info) CDStat(disc,TRUE);
+  if(!disc->have_info) CDStat(Disc, TRUE);
 
-  id=DiscDBDiscid(disc);
+  id = DiscDBDiscid(Disc);
   
   g_snprintf(root_dir,256,"%s/.cddb",getenv("HOME"));
   
@@ -656,13 +684,106 @@ gboolean DiscDBStatDiscData(DiscInfo *disc)
   return FALSE;
 }
 
-/* Read from the local database */
+static void frames_to_disctime(int frames, DiscTime *dt) {
+  frames /= 75;
+  dt->mins = frames / 60;
+  dt->secs = frames % 60;
+}
 
-int DiscDBReadDiscData(DiscInfo *disc,DiscData *ddata, const char *encoding)
-{
+static void SetTrackDerivedInfo(TrackInfo *track) {
+  frames_to_disctime(track->start_frame, &track->start_pos);
+  frames_to_disctime(track->num_frames, &track->length);
+}
+
+static void SetTrackFrames(TrackInfo *track, int start_frame, int num_frames) {
+  track->start_frame = start_frame;
+  track->num_frames = num_frames;
+
+  SetTrackDerivedInfo(track);
+}
+
+void InitTrack(TrackInfo *track, int start_frame, int num_frames) {
+  SetTrackFrames(track, start_frame, num_frames);
+  track->flags = 0;
+}
+
+void ReinitTrack(TrackInfo *track) {
+  InitTrack(track, track->start_frame, track->num_frames);
+}
+
+static int DiscDBReadPhysTracksFromCDDB(Disc *Disc, DiscDataInstance *pins,
+					char *root_dir, const char *encoding) {
+  DiscData *ddata = &Disc->data;
   FILE *discdb_data=NULL;
   int index,genre;
-  char root_dir[256],file[256],inbuf[512];
+  char file[256],inbuf[512];
+  struct stat st;
+
+  ddata->data_id = DiscDBDiscid(Disc);
+  ddata->revision=-1;
+
+  pins->extended[0] = '\0';
+  pins->title[0] = '\0';
+  pins->artist[0] = '\0';
+  pins->playlist[0] = '\0';
+  pins->multi_artist = FALSE;
+  pins->year = 0;
+  pins->genre = 7;
+  pins->id3genre = -1;
+
+  for(index=0;index<MAX_TRACKS;index++) {
+	pins->tracks[index].track_name[0] = '\0';
+	pins->tracks[index].track_artist[0] = '\0';
+	pins->tracks[index].track_extended[0] = '\0';
+	pins->tracks[index].vtracknum = index + 1;
+  }
+
+  g_snprintf(file,256,"%s/%08x",root_dir,ddata->data_id);
+/* XXX check return of fopen() */
+  if(stat(file,&st)==0) {
+    discdb_data=fopen(file, "r");
+  }
+  else {
+    for(genre=0;genre<12;genre++) {
+      g_snprintf(file,256,"%s/%s/%08x",root_dir,DiscDBGenre(genre),
+	       ddata->data_id);
+      
+      if(stat(file,&st)==0) {
+	discdb_data=fopen(file, "r");
+	
+	pins->genre = genre;
+	break;
+      }
+    }
+
+    if(genre==12) return -1;
+  }
+
+  while(fgets(inbuf,512,discdb_data))
+    DiscDBProcessLine(inbuf, Disc);
+
+  if(!DiscDBUTF8Validate(Disc)) {
+    DiscDBConvertEncoding(Disc, strcasecmp(encoding, "UTF-8") ?
+			  encoding : "ISO-8859-1" , "UTF-8");
+  }
+
+  fclose(discdb_data);
+
+  /* Both disc title and artist have been stuffed in the title field, so they
+     need to be separated */
+
+  if (pins->id3genre == -1)
+	pins->id3genre = DiscDB2ID3(pins->genre);
+
+  DiscDBParseTitle(pins->title, pins->title, pins->artist, "/");
+  return 0;
+}
+
+int DiscDBReadDiscData(Disc *Disc, const char *encoding)
+{
+  DiscInfo *disc = &Disc->info;
+  int ret;
+  char root_dir[256];
   struct stat st;
   
   g_snprintf(root_dir,256,"%s/.cddb",getenv("HOME"));
@@ -676,65 +797,24 @@ int DiscDBReadDiscData(DiscInfo *disc,DiscData *ddata, const char *encoding)
     }
   }
   
-  if(!disc->have_info) CDStat(disc,TRUE);
+  g_assert(Disc->num_vtrack_sets == 0);
 
-  ddata->data_id=DiscDBDiscid(disc);
-  *(ddata->data_extended)='\0';
-  *(ddata->data_title)='\0';
-  *(ddata->data_artist)='\0';
-  *(ddata->data_playlist)='\0';
-  ddata->data_multi_artist=FALSE;
-  ddata->data_year=0;
-  ddata->data_genre=7;
-  ddata->data_id3genre=-1;
-  ddata->revision=-1;
+  if(!disc->have_info) CDStat(Disc, TRUE);
 
-  for(index=0;index<MAX_TRACKS;index++) {
-    *(ddata->data_track[index].track_name)='\0';
-    *(ddata->data_track[index].track_artist)='\0';
-    *(ddata->data_track[index].track_extended)='\0';
-  }
+  g_assert(Disc->num_vtrack_sets == 0);
 
-  g_snprintf(file,256,"%s/%08x",root_dir,ddata->data_id);
-  if(stat(file,&st)==0) {
-    discdb_data=fopen(file, "r");
-  }
-  else {
-    for(genre=0;genre<12;genre++) {
-      g_snprintf(file,256,"%s/%s/%08x",root_dir,DiscDBGenre(genre),
-	       ddata->data_id);
-      
-      if(stat(file,&st)==0) {
-	discdb_data=fopen(file, "r");
-	
-	ddata->data_genre=genre;
-	break;
-      }
-    }
+  ret = DiscDBReadPhysTracksFromCDDB(Disc, &Disc->p_instance.data, root_dir,
+				     encoding);
+  if (ret)
+	return ret; /* XXX try vtracks anyway? */
 
-    if(genre==12) return -1;
-  }
-
-  while(fgets(inbuf,512,discdb_data))
-    DiscDBProcessLine(inbuf,ddata,disc->num_tracks);
-
-  /* Both disc title and artist have been stuffed in the title field, so the
-     need to be separated */
-
-  DiscDBParseTitle(ddata->data_title,ddata->data_title,ddata->data_artist,"/");
-
-  if(!DiscDBUTF8Validate(disc,ddata)) {
-    DiscDBConvertEncoding(disc,ddata,strcasecmp(encoding,"UTF-8")?
-				     encoding:"ISO-8859-1","UTF-8");
-  }
-
-  fclose(discdb_data);
-  
-  return 0;
+  /* Can't pass in the instances because we allocate them in the function,
+   * and p_instance may be reallocced if there are vtracks */
+  return DiscDBReadVirtTracksFromvtrackinfo(Disc, root_dir);
 }
 
-static void DiscDBWriteLine(char *header,int num,char *data,FILE *outfile,
-                            char *encoding)
+void DiscDBWriteLine(char *header,int num,char *data,FILE *outfile,
+		     char *encoding)
 {
   char *offset, *next, *chunk;
 
@@ -769,15 +849,19 @@ static void DiscDBWriteLine(char *header,int num,char *data,FILE *outfile,
 
 /* Write to the local cache */
 
-int DiscDBWriteDiscData(DiscInfo *disc,DiscData *ddata,FILE *outfile,
-                        gboolean gripext,gboolean freedbext,char *encoding)
+int DiscDBWriteDiscData(Disc *Disc, FILE *outfile,
+			gboolean gripext,gboolean freedbext,char *encoding)
 {
+  DiscInfo *disc = &Disc->info;
+  DiscData *ddata = &Disc->data;
   FILE *discdb_data;
+  DiscDataInstance *pdins = &Disc->p_instance.data;
+  DiscInfoInstance *piins = &Disc->p_instance.info;
   int track;
   char root_dir[256],file[256],tmp[512];
   struct stat st;
 
-  if(!disc->have_info) CDStat(disc,TRUE);
+  if(!disc->have_info) CDStat(Disc, TRUE);
 
   if(!outfile) {
     g_snprintf(root_dir,256,"%s/.cddb",getenv("HOME"));
@@ -817,8 +901,8 @@ int DiscDBWriteDiscData(DiscInfo *disc,DiscData *ddata,FILE *outfile,
   fputs("# \n",discdb_data);
   fputs("# Track frame offsets:\n",discdb_data);
 
-  for(track=0;track<disc->num_tracks;track++)
-    fprintf(discdb_data, "#       %d\n",disc->track[track].start_frame);
+  for(track = 0; track < piins->num_tracks; track++)
+    fprintf(discdb_data, "#       %d\n", piins->tracks[track].start_frame);
 
   fputs("# \n",discdb_data);
   fprintf(discdb_data,"# Disc length: %d seconds\n",disc->length.mins *
@@ -832,53 +916,139 @@ int DiscDBWriteDiscData(DiscInfo *disc,DiscData *ddata,FILE *outfile,
   fputs("# \n",discdb_data);
   fprintf(discdb_data,"DISCID=%08x\n",ddata->data_id);
 
-  g_snprintf(tmp,512,"%s / %s",ddata->data_artist,ddata->data_title);
-
+  g_snprintf(tmp, 512, "%s / %s", pdins->artist, pdins->title);
   DiscDBWriteLine("DTITLE",-1,tmp,discdb_data,encoding);
 
   if(gripext||freedbext) {
-    if(ddata->data_year)
-      fprintf(discdb_data,"DYEAR=%d\n",ddata->data_year);
+    if(pdins->year)
+      fprintf(discdb_data, "DYEAR=%d\n", pdins->year);
     else fprintf(discdb_data,"DYEAR=\n");
   }
 
   if(gripext) {
-    fprintf(discdb_data,"DGENRE=%s\n",DiscDBGenre(ddata->data_genre));
-    fprintf(discdb_data,"DID3=%d\n",ddata->data_id3genre);
+    fprintf(discdb_data, "DGENRE=%s\n", DiscDBGenre(pdins->genre));
+    fprintf(discdb_data, "DID3=%d\n", pdins->id3genre);
   }
   else if(freedbext) {
-    fprintf(discdb_data,"DGENRE=%s\n",ID3GenreString(ddata->data_id3genre));
+    fprintf(discdb_data,"DGENRE=%s\n",ID3GenreString(pdins->id3genre));
   }
 
-  for(track=0;track<disc->num_tracks;track++) {
-    if(gripext||!*(ddata->data_track[track].track_artist)) {
-      DiscDBWriteLine("TTITLE",track,ddata->data_track[track].track_name,
+  for(track = 0; track < piins->num_tracks; track++) {
+    if(gripext || !pdins->tracks[track].track_artist[0]) {
+      DiscDBWriteLine("TTITLE", track, pdins->tracks[track].track_name,
 		      discdb_data,encoding);
     }
     else {
-      g_snprintf(tmp,512,"%s / %s",ddata->data_track[track].track_artist,
-		 ddata->data_track[track].track_name);
+      g_snprintf(tmp, 512, "%s / %s", pdins->tracks[track].track_artist,
+		 pdins->tracks[track].track_name);
       DiscDBWriteLine("TTITLE",track,tmp,discdb_data,encoding);
     }
 
-    if(gripext&&*(ddata->data_track[track].track_artist))
-      DiscDBWriteLine("TARTIST",track,ddata->data_track[track].track_artist,
+    if(gripext && pdins->tracks[track].track_artist[0])
+      DiscDBWriteLine("TARTIST", track, pdins->tracks[track].track_artist,
 		      discdb_data,encoding);
   }
 
-  DiscDBWriteLine("EXTD",-1,ddata->data_extended,discdb_data,encoding);
+  DiscDBWriteLine("EXTD", -1, pdins->extended, discdb_data,encoding);
    
-  for(track=0;track<disc->num_tracks;track++)
-    DiscDBWriteLine("EXTT",track,
-                    ddata->data_track[track].track_extended,discdb_data,
-                    encoding);
-  
+  for(track = 0; track < piins->num_tracks; track++) {
+    DiscDBWriteLine("EXTT", track,
+		    pdins->tracks[track].track_extended, discdb_data,
+		    encoding);
+  }
+
   if(outfile)
     fprintf(discdb_data,"PLAYORDER=\n");
   else {
-    fprintf(discdb_data,"PLAYORDER=%s\n",ddata->data_playlist);
+    fprintf(discdb_data,"PLAYORDER=%s\n", pdins->playlist);
     fclose(discdb_data);
   }
   
+  return 0;
+}
+
+int DiscDBWriteVTrackData(Disc *Disc, char *encoding) {
+  char root_dir[256], file[276];
+  int t;
+  FILE *f;
+  DiscData *ddata = &Disc->data;
+
+  if (Disc->num_vtrack_sets == 0)
+	return 0;
+
+  g_snprintf(root_dir, 256, "%s/.cddb", getenv("HOME"));
+  g_snprintf(file, 276, "%s/%08x.vtrackinfo", root_dir, ddata->data_id);
+
+  if (Disc->vtrack_problems) {
+	extern void DisplayMsg(char *msg);
+	char *msg;
+	strcat(file, "-problem");
+
+	msg = g_strdup_printf("Warning - Writing vtrackinfo data to\n"
+			      "%s\ndue to encountered errors", file);
+	DisplayMsg(_(msg));
+	g_free(msg);
+	  
+  } else {
+	char cmdline[2048];
+	struct stat unused;
+	int status;
+	
+	status = stat(file, &unused);
+	if (status == -1  &&  errno == ENOENT) {
+		/* There is no vtrackinfo file.  So don't try to back it up. */
+	} else {
+		g_snprintf(cmdline, 2048, "cp \"%s\" \"%s.orig\"", file, file);
+		status = system(cmdline);
+		if (WIFSIGNALED(status) || (WIFEXITED(status) && WEXITSTATUS(status))){
+			extern void DisplayMsg(char *msg);
+			char *msg;
+
+			strcat(file, "-problem");
+			msg = g_strdup_printf("Warning - Writing vtrackinfo "
+					      "data to\n%s\ndue to failure to "
+					      "make backup", file);
+			DisplayMsg(_(msg));
+			g_free(msg);
+			Disc->vtrack_problems = TRUE;
+		} else {
+			/* XXX Temp safety */
+			extern void DisplayMsg(char *msg);
+			char *msg;
+
+			strcat(file, "-safe");
+			msg = g_strdup_printf("Warning - Writing vtrackinfo "
+					      "data to\n%s\nbecause vtrackinfo "
+					      "file writing is not fully tested",
+					      file);
+			DisplayMsg(_(msg));
+			g_free(msg);
+		}
+	}
+  }
+
+
+  f = fopen(file, "w");
+  if (f == NULL) {
+	  if (errno == ENOENT) {
+		  t = mkdir(root_dir, 0777);
+		  if (t == -1) {
+			  g_warning("Can't create cddb directory %s: %s",
+				    root_dir, strerror(errno));
+			  return errno;
+		  }
+		  f = fopen(file, "w");
+	  }
+	  if (f == NULL) {
+		  g_warning("Can't create vtrackinfo file %s: %s",
+			    file, strerror(errno));
+		  return errno;
+	  }
+  }
+
+  VtracksWriteVtrackinfoFile(Disc, f, encoding);
+
+  fclose(f);
+
   return 0;
 }

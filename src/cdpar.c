@@ -43,6 +43,8 @@
 
 #include "cdpar.h"
 
+#include "common.h"
+
 static void PutNum(long num,int f,int endianness,int bytes);
 static void WriteWav(int f,long bytes);
 static void CDPCallback(long inpos, int function);
@@ -256,12 +258,16 @@ static long CDPWrite(int outf,char *buffer)
   return(0);
 }
 
-gboolean CDPRip(char *device,char *generic_scsi_device,int track,
-		long first_sector,long last_sector,
+gboolean CDPRip(char *device,char *generic_scsi_device,
+		Disc *Disc,
+		int track, long first_sector,long last_sector,
 		char *outfile,int paranoia_mode,int *rip_smile_level,
 		gfloat *rip_percent_done,gboolean *stop_thread_rip_now,
 		gboolean do_gain_calc,FILE *output_fp)
 {
+  DiscInfoInstance *ins = &Disc->instance->info;
+  DiscInfoInstance *pins = &Disc->p_instance.info;
+  extern int do_debug;
   int force_cdrom_endian=-1;
   int force_cdrom_sectors=-1;
   int force_cdrom_overlap=-1;
@@ -269,9 +275,11 @@ gboolean CDPRip(char *device,char *generic_scsi_device,int track,
 
   /* full paranoia, but allow skipping */
   int out;
-  int verbose=CDDA_MESSAGE_FORGETIT;
+  int verbose = do_debug ? CDDA_MESSAGE_PRINTIT : CDDA_MESSAGE_FORGETIT;
   int i;
-  long cursor,offset;
+  long cursor;
+  long first_offset, last_offset;
+  int  first_ptrack, last_ptrack;
   cdrom_drive *d=NULL;
   cdrom_paranoia *p=NULL;
 
@@ -285,8 +293,14 @@ gboolean CDPRip(char *device,char *generic_scsi_device,int track,
   else  d=cdda_identify(device,verbose,NULL);
   
   if(!d){
-    if(!verbose)
-      fprintf(output_fp,"\nUnable to open cdrom drive.\n");
+    if(!verbose) {
+      if (generic_scsi_device && *generic_scsi_device)
+	fprintf(output_fp, _("Error: unable to open %s or %s\n"),
+		generic_scsi_device, device);
+      else
+	fprintf(output_fp, _("Error: unable to open %s\n"), device);
+    }
+    fprintf(output_fp, _("Also check the permissions of /dev/sg* and /dev/sr*\n"));
 
     return FALSE;
   }
@@ -371,7 +385,7 @@ gboolean CDPRip(char *device,char *generic_scsi_device,int track,
 	    "         and then recompiling the kernel.\n\n"
 	    "         Attempting to continue...\n\n");
   }
-  
+
   if(d->nsectors==1){
     fprintf(output_fp,
 	    "WARNING: The autosensed/selected sectors per read value is\n"
@@ -380,17 +394,44 @@ gboolean CDPRip(char *device,char *generic_scsi_device,int track,
 	    "         Attempting to continue...\n\n");
   }
 
-  if(!cdda_track_audiop(d,track)) {
-    fprintf(output_fp,
-	    "Selected track is not an audio track. Aborting.\n\n");
-    cdda_close(d);
-    return FALSE;
+  /* Convert track-relative offsets to disc-relative offsets */
+  first_sector += ins->tracks[track - 1].start_frame;
+  last_sector += ins->tracks[track - 1].start_frame;
+
+  Debug("first_sector: %ld, last_sector: %ld\n", first_sector, last_sector);
+
+  first_ptrack = frame_to_ptrack(Disc, first_sector) + 1;
+  last_ptrack =  frame_to_ptrack(Disc, last_sector) + 1;
+
+  Debug("first_ptrack: %d, last_ptrack %d\n", first_ptrack, last_ptrack);
+
+  for (i = first_ptrack; i <= last_ptrack; i++) {
+	if (!cdda_track_audiop(d, i)) {
+	  fprintf(output_fp, "Selected track %s a data track.  Aborting.\n\n",
+			 first_ptrack == last_ptrack ? "is" : "includes");
+	  cdda_close(d);
+	  return FALSE;
+	}
   }
 
-  offset=cdda_track_firstsector(d,track);
-  first_sector+=offset;
-  last_sector+=offset;
+  /* This is necessary because cdparanoia has a different idea of tracks'
+   * starting offsets than we do.  In particular, it usually thinks track 0
+   * starts at offset 0, instead of 150 or so.  So we compute where it
+   * thinks the track begins and ends. */
+  first_offset = cdda_track_firstsector(d, first_ptrack) - pins->tracks[first_ptrack - 1].start_frame;
+  last_offset = cdda_track_firstsector(d, last_ptrack) - pins->tracks[last_ptrack - 1].start_frame;
 
+  first_sector += first_offset;
+  last_sector += last_offset;
+
+  if (first_offset != last_offset)
+	g_warning("!!!first_offset: %ld != last_offset: %ld\n", first_offset, last_offset);
+  else
+	Debug("offset: %ld\n", first_offset);
+  Debug("first_sector: %ld, last_sector: %ld\n", first_sector, last_sector);
+
+  Debug("\n");
+  
   p=paranoia_init(d);
   paranoia_modeset(p,paranoia_mode);
 

@@ -48,6 +48,8 @@ grip_SOURCES =         \
 	eggtrayicon.c \
 	eggtrayicon.h \
 	tray.c \
-	tray.h 
+	tray.h \
+	vtracks.c \
+	vtracks.h
 
 grip_LDADD = @TERMINAL_WIDGET_LIBS@ $(CDPAR_LIBS) $(ID3_LIBS)

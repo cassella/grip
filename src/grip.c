@@ -191,7 +191,6 @@ GtkWidget *GripNew(const gchar* geometry,char *device,char *scsi_device,
   uinfo->status_window=NULL;
   uinfo->rip_status_window=NULL;
   uinfo->encode_status_window=NULL;
-  uinfo->track_list=NULL;
 
   uinfo->win_width=WINWIDTH;
   uinfo->win_height=WINHEIGHT;
@@ -236,13 +235,17 @@ GtkWidget *GripNew(const gchar* geometry,char *device,char *scsi_device,
   ginfo->local_mode=local_mode;
   ginfo->do_redirect=!no_redirect;
 
-  if(!CDInitDevice(ginfo->cd_device,&(ginfo->disc))) {
+  ginfo->Disc.instance = &ginfo->Disc.p_instance;
+  ginfo->gui_info.instance = &ginfo->gui_info.p_instance;
+  ginfo->Disc.saved_instance_offset = SAVED_INSTANCE_NONE;
+
+  if(!CDInitDevice(ginfo->cd_device,&(ginfo->Disc.info))) {
     sprintf(buf,_("Error: Unable to initialize [%s]\n"),ginfo->cd_device);
 
     DisplayMsg(buf);
   }
 
-  CDStat(&(ginfo->disc),TRUE);
+  CDStat(&ginfo->Disc, TRUE);
 
   gtk_window_set_policy(GTK_WINDOW(app),FALSE,TRUE,FALSE);
   gtk_window_set_wmclass(GTK_WINDOW(app),"grip","Grip");
@@ -295,8 +298,8 @@ GtkWidget *GripNew(const gchar* geometry,char *device,char *scsi_device,
   uinfo->track_edit_box=MakeEditBox(ginfo);
   gtk_box_pack_start(GTK_BOX(uinfo->winbox),uinfo->track_edit_box,
 		     FALSE,FALSE,0);
-  if(uinfo->track_edit_visible) gtk_widget_show(uinfo->track_edit_box);
 
+  if(uinfo->track_edit_visible) gtk_widget_show(uinfo->track_edit_box);
 
   uinfo->playopts=MakePlayOpts(ginfo);
   gtk_box_pack_start(GTK_BOX(uinfo->winbox),uinfo->playopts,FALSE,FALSE,0);
@@ -311,6 +314,8 @@ GtkWidget *GripNew(const gchar* geometry,char *device,char *scsi_device,
   
   gnome_app_set_contents(GNOME_APP(app),uinfo->winbox);
   gtk_widget_show(uinfo->winbox);
+
+  VTrackEditDisableAllButtons(uinfo);
 
   CheckNewDisc(ginfo,FALSE);
 
@@ -365,7 +370,7 @@ static void ReallyDie(gint reply,gpointer data)
 #endif
 
   if(!ginfo->no_interrupt)
-    CDStop(&(ginfo->disc));
+    CDStop(&ginfo->Disc.info);
 
   DoSaveConfig(ginfo);
 
@@ -687,6 +692,30 @@ static void LoadImages(GripGUI *uinfo)
   uinfo->progtrack_image=Loadxpm(uinfo->app,progtrack_xpm);
   uinfo->mail_image=Loadxpm(uinfo->app,mail_xpm);
   uinfo->save_image=Loadxpm(uinfo->app,save_xpm);
+
+  uinfo->newset_all_image=Loadxpm(uinfo->app,newset_all_xpm);
+  uinfo->newset_preceding_image=Loadxpm(uinfo->app,newset_preceding_xpm);
+  uinfo->newset_preceding_strictly_image=Loadxpm(uinfo->app,newset_preceding_strictly_xpm);
+  uinfo->newset_following_image=Loadxpm(uinfo->app,newset_following_xpm);
+  uinfo->newset_following_strictly_image=Loadxpm(uinfo->app,newset_following_strictly_xpm);
+  uinfo->removeset_image=Loadxpm(uinfo->app,removeset_xpm);
+
+  uinfo->split_track_image=Loadxpm(uinfo->app,split_track_xpm);
+  uinfo->join_to_prev_image=Loadxpm(uinfo->app,join_to_prev_xpm);
+  uinfo->join_to_next_image=Loadxpm(uinfo->app,join_to_next_xpm);
+  uinfo->remove_track_image=Loadxpm(uinfo->app,remove_track_xpm);
+
+  uinfo->move_beginning_here_adjust_image=Loadxpm(uinfo->app,move_beginning_here_adjust_xpm);
+  uinfo->move_beginning_here_noadjust_image=Loadxpm(uinfo->app,move_beginning_here_noadjust_xpm);
+  uinfo->move_beginning_forward_adjust_image=Loadxpm(uinfo->app,move_beginning_forward_adjust_xpm);
+  uinfo->move_beginning_forward_noadjust_image=Loadxpm(uinfo->app,move_beginning_forward_noadjust_xpm);
+  uinfo->move_beginning_back_adjust_image=Loadxpm(uinfo->app,move_beginning_back_adjust_xpm);
+
+  uinfo->move_end_here_adjust_image=Loadxpm(uinfo->app,move_end_here_adjust_xpm);
+  uinfo->move_end_here_noadjust_image=Loadxpm(uinfo->app,move_end_here_noadjust_xpm);
+  uinfo->move_end_back_adjust_image=Loadxpm(uinfo->app,move_end_back_adjust_xpm);
+  uinfo->move_end_back_noadjust_image=Loadxpm(uinfo->app,move_end_back_noadjust_xpm);
+  uinfo->move_end_forward_adjust_image=Loadxpm(uinfo->app,move_end_forward_adjust_xpm);
 
   uinfo->empty_image=NewBlankPixmap(uinfo->app);
 
@@ -1065,7 +1094,7 @@ void CloseStuff(void *user_data)
   ginfo=(GripInfo *)user_data;
 
   close(ConnectionNumber(GDK_DISPLAY()));
-  close(ginfo->disc.cd_desc);
+  close(ginfo->Disc.info.cd_desc);
 
   fd=open("/dev/null",O_RDWR);
   dup2(fd,0);

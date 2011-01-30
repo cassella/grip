@@ -25,14 +25,18 @@
 
 #include "grip.h"
 
+#include "vtracks.h"
+
 GtkWidget *MakeEditBox(GripInfo *ginfo);
 void TrackEditChanged(GtkWidget *widget,gpointer data);
 void UpdateMultiArtist(GtkWidget *widget,gpointer data);
+void UpdateVTrackEdit(GtkWidget *widget, gpointer data);
 void ToggleTrackEdit(GtkWidget *widget,gpointer data);
-void SetTitle(GripInfo *ginfo,char *title);
-void SetArtist(GripInfo *ginfo,char *artist);
+void UpdateTitleEdit(GripInfo *ginfo);
+void SetTitle(GripInfo *ginfo, DiscInstance *ins, DiscGuiInstance *gins, char *title);
+void UpdateArtistEdit(GripInfo *ginfo);
+void SetArtist(GripInfo *ginfo, DiscInstance *ins, DiscGuiInstance *gins, char *artist);
 void SetYear(GripInfo *ginfo,int year);
 void SetID3Genre(GripInfo *ginfo,int id3_genre);
-
 
 #endif /* ifndef GRIP_DISCEDIT_H */

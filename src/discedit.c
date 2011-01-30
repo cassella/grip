@@ -39,6 +39,20 @@ static void SubmitEntryCB(GtkWidget *widget,gpointer data);
 static void GetDiscDBGenre(GripInfo *ginfo);
 static void DiscDBGenreChanged(GtkWidget *widget,gpointer data);
 
+typedef void OldGtkSignalFunc(GtkWidget *widget,gpointer data);
+
+
+GtkButton *VTEditImageButton(GripInfo *ginfo, OldGtkSignalFunc func, GtkWidget *image, char *tooltip, GtkWidget *hbox) {
+  GripGUI *uinfo = &ginfo->gui_info;
+  GtkWidget *button = ImageButton(GTK_WIDGET(uinfo->app), image);
+  gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(func), ginfo);
+  gtk_tooltips_set_tip(uinfo->vtracktooltips, button, _(tooltip), NULL);
+  gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+  gtk_widget_show(button);
+
+  return GTK_BUTTON(button);
+}
+
 GtkWidget *MakeEditBox(GripInfo *ginfo)
 {
   GripGUI *uinfo;
@@ -49,12 +63,22 @@ GtkWidget *MakeEditBox(GripInfo *ginfo)
   GtkWidget *item;
   GtkWidget *check;
   GtkWidget *entry;
+  GtkWidget *vtbox, *vthbox;
+  GtkWidget *sep;
   GtkObject *adj;
+  GList *list;
   ID3Genre *id3_genre;
   gint id3_genre_count;
+  gint position;
+  char *ttt; /* tooltiptext */
   int len;
   int dub_size;
   PangoLayout *layout;
+  int i;
+  int tlen;
+
+  static const char *fields[] = {"Disc title", "Disc artist", "ID3 Genre", "Disc year",
+				 "Track name", "Track artist"};
 
   uinfo=&(ginfo->gui_info);
 
@@ -66,19 +90,20 @@ GtkWidget *MakeEditBox(GripInfo *ginfo)
 
   label=gtk_label_new(_("Disc title"));
 
-  /* This should be the longest string in the track edit section */
+  /* Find the length of the longest label in the Track edit section */
 
+  len = 0;
+  for (i = 0; i < sizeof(fields) / sizeof(fields[0]); i++) {
+	  layout = gtk_widget_create_pango_layout(GTK_WIDGET(label),
+						  _(fields[i]));
+	  pango_layout_get_size(layout, &tlen, NULL);
+	  tlen /= PANGO_SCALE;
+	  g_object_unref(layout);
+	  if (tlen > len)
+		  len = tlen;
+  }
 
-
-  layout=gtk_widget_create_pango_layout(GTK_WIDGET(label),
-					_("Track name"));
-
-
-  pango_layout_get_size(layout,&len,NULL);
-
-  len/=PANGO_SCALE;
-
-  g_object_unref(layout);
+/*   len += 25; */
 
   layout=gtk_widget_create_pango_layout(GTK_WIDGET(label),
 					_("W"));
@@ -91,7 +116,6 @@ GtkWidget *MakeEditBox(GripInfo *ginfo)
 
 
   gtk_widget_set_usize(label,len,0);
-
   gtk_box_pack_start(GTK_BOX(hbox),label,FALSE,FALSE,0);
   gtk_widget_show(label);
 
@@ -112,6 +136,8 @@ GtkWidget *MakeEditBox(GripInfo *ginfo)
   gtk_box_pack_start(GTK_BOX(hbox),label,FALSE,FALSE,0);
   gtk_widget_show(label);
 
+
+
   uinfo->artist_edit_entry=gtk_entry_new_with_max_length(256);
   gtk_signal_connect(GTK_OBJECT(uinfo->artist_edit_entry),"changed",
 		     GTK_SIGNAL_FUNC(ArtistEditChanged),(gpointer)ginfo);
@@ -124,7 +150,7 @@ GtkWidget *MakeEditBox(GripInfo *ginfo)
 
   hbox=gtk_hbox_new(FALSE,3);
 
-  label=gtk_label_new(_("ID3 genre:"));
+  label=gtk_label_new(_("ID3 genre"));
   gtk_widget_set_usize(label,len,0);
   gtk_box_pack_start(GTK_BOX(hbox),label,FALSE,FALSE,0);
   gtk_widget_show(label);
@@ -148,7 +174,7 @@ GtkWidget *MakeEditBox(GripInfo *ginfo)
   gtk_box_pack_start(GTK_BOX(hbox),uinfo->id3_genre_combo,TRUE,TRUE,0);
   gtk_widget_show(uinfo->id3_genre_combo);
 
-  SetID3Genre(ginfo,ginfo->ddata.data_id3genre);
+  SetID3Genre(ginfo,ginfo->Disc.instance->data.id3genre);
 
   gtk_box_pack_start(GTK_BOX(vbox),hbox,FALSE,FALSE,0);
   gtk_widget_show(hbox);
@@ -243,18 +269,24 @@ GtkWidget *MakeEditBox(GripInfo *ginfo)
   gtk_widget_show(hbox);
 
   gtk_box_pack_start(GTK_BOX(vbox),uinfo->multi_artist_box,FALSE,FALSE,0);
-
-  if(ginfo->ddata.data_multi_artist)
-    gtk_widget_show(uinfo->multi_artist_box);
+  gtk_widget_hide(uinfo->multi_artist_box);
 
   hbox=gtk_hbox_new(FALSE,0);
 
   check=MakeCheckButton(&uinfo->multi_artist_button,
-			&(ginfo->ddata.data_multi_artist),
+			&ginfo->Disc.instance->data.multi_artist,
 			_("Multi-artist"));
   gtk_signal_connect(GTK_OBJECT(uinfo->multi_artist_button),"clicked",
 		     GTK_SIGNAL_FUNC(UpdateMultiArtist),(gpointer)ginfo);
   gtk_box_pack_start(GTK_BOX(hbox),check,TRUE,TRUE,0);
+  gtk_widget_show(check);
+
+  check = MakeCheckButton(&uinfo->vtrack_edit_button,
+			&uinfo->vtrack_edit_visible,
+			_("Edit vtracks"));
+  gtk_signal_connect(GTK_OBJECT(uinfo->vtrack_edit_button), "clicked",
+			 GTK_SIGNAL_FUNC(UpdateVTrackEdit), (gpointer)ginfo);
+  gtk_box_pack_start(GTK_BOX(hbox), check, TRUE, TRUE, 0);
   gtk_widget_show(check);
 
   button=ImageButton(GTK_WIDGET(uinfo->app),uinfo->save_image);
@@ -278,6 +310,237 @@ GtkWidget *MakeEditBox(GripInfo *ginfo)
   gtk_box_pack_start(GTK_BOX(vbox),hbox,FALSE,FALSE,0);
   gtk_widget_show(hbox);
 
+  /* Begin vtrack edit section */
+
+  uinfo->vtracktooltips = gtk_tooltips_new();
+  uinfo->vtrack_buttons_sensitive = 0;
+
+  vtbox = gtk_vbox_new(FALSE, 0);
+  uinfo->vtrack_edit_box = vtbox;
+  gtk_box_pack_start(GTK_BOX(vbox), vtbox, FALSE, FALSE, 0);
+
+  sep = gtk_hseparator_new();
+  gtk_box_pack_start(GTK_BOX(vtbox), sep, TRUE, TRUE, 0);
+  gtk_widget_show(sep);
+
+  label = gtk_label_new(_("Vtrack editing"));
+  gtk_box_pack_start(GTK_BOX(vtbox), label, TRUE, TRUE, 0);
+  gtk_widget_show(label);
+
+  /* vtrackset section */
+
+  vthbox = gtk_hbox_new(FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vtbox), vthbox, FALSE, FALSE, 0);
+  gtk_widget_show(vthbox);
+
+  ttt = "New vtrackset with all of the current set's tracks";
+  uinfo->newset_all_button =
+      VTEditImageButton(ginfo, NewVTracksetClicked,
+			uinfo->newset_all_image, ttt, vthbox);
+
+  ttt = "New vtrackset with the current track and all preceding tracks";
+  uinfo->newset_preceding_button =
+      VTEditImageButton(ginfo, NewVTracksetPrecedingClicked,
+			uinfo->newset_preceding_image, ttt, vthbox);
+
+  ttt = "New vtrackset with the current track and all following tracks";
+  uinfo->newset_following_button =
+      VTEditImageButton(ginfo, NewVTracksetFollowingClicked,
+			uinfo->newset_following_image, ttt, vthbox);
+
+
+  ttt = "New vtrackset with all tracks preceding the current track";
+  uinfo->newset_preceding_strictly_button =
+      VTEditImageButton(ginfo, NewVTracksetStrictlyPrecedingClicked,
+			uinfo->newset_preceding_strictly_image , ttt, vthbox);
+
+
+  ttt = "New vtrackset with all tracks following the current track";
+  uinfo->newset_following_strictly_button =
+      VTEditImageButton(ginfo, NewVTracksetStrictlyFollowingClicked,
+			uinfo->newset_following_strictly_image, ttt, vthbox);
+
+  /* Move the "remove vtrackset" button to the right side of the hbox */
+  button = gtk_hbox_new(FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vthbox), button, TRUE, FALSE, 0);
+  gtk_widget_show(button);
+
+
+  ttt = "Remove the current vtrackset";
+  uinfo->removeset_button =
+      VTEditImageButton(ginfo, RemoveVTracksetClicked,
+			uinfo->removeset_image , ttt, vthbox);
+  /* end vtrackset section */
+
+  /* vtrack section */
+
+  vthbox = gtk_hbox_new(FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vtbox), vthbox, FALSE, FALSE, 0);
+  gtk_widget_show(vthbox);
+
+  ttt = "Split the current track into two tracks at the current track position";
+  uinfo->split_track_button =
+      VTEditImageButton(ginfo, SplitTrackHereClicked,
+			uinfo->split_track_image , ttt, vthbox);
+
+  ttt = "Append this track to the previous track";
+  uinfo->join_to_prev_button = 
+      VTEditImageButton(ginfo, JoinToPrevClicked,
+			uinfo->join_to_prev_image, ttt, vthbox);
+
+  ttt = "Prepend this track to the next track";
+  uinfo->join_to_next_button =
+      VTEditImageButton(ginfo, JoinToNextClicked,
+			uinfo->join_to_next_image, ttt, vthbox);
+
+  /* Move the "remove track" button to the right side of the hbox */
+  button = gtk_hbox_new(FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vthbox), button, TRUE, FALSE, 0);
+  gtk_widget_show(button);
+
+  ttt = "Remove this track";
+  uinfo->remove_track_button =
+      VTEditImageButton(ginfo, RemoveTrackClicked,
+			uinfo->remove_track_image, ttt, vthbox);
+
+
+  /* Move End section */
+
+  vthbox = gtk_hbox_new(FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vtbox), vthbox, FALSE, FALSE, 0);
+  gtk_widget_show(vthbox);
+
+  ttt = "Move the end of this track to here, without adjusting the next track";
+  uinfo->move_end_here_noadjust_button =
+      VTEditImageButton(ginfo, MoveEndToHereNoAdjustClicked,
+			uinfo->move_end_here_noadjust_image, ttt, vthbox);
+
+  ttt = "Move the end of this track to here, adjusting the beginning of the "
+	"next track to match if it is adjacent to the end of this one";
+  uinfo->move_end_here_adjust_button =
+      VTEditImageButton(ginfo, MoveEndToHereAdjustClicked,
+			uinfo->move_end_here_adjust_image, ttt, vthbox);
+
+  ttt = "Move the end of this track backward by the amount selected below, "
+	"adjusting the beginning of the next track to match if it is adjacent "
+	"to the end of this one";
+  uinfo->move_end_back_adjust_button =
+      VTEditImageButton(ginfo, MoveEndBackwardAdjustClicked,
+			uinfo->move_end_back_adjust_image, ttt, vthbox);
+
+  ttt = "Move the end of this track backward by the amount selected below, "
+	"without adjusting the next track";
+  uinfo->move_end_back_noadjust_button =
+      VTEditImageButton(ginfo, MoveEndBackwardNoAdjustClicked,
+			uinfo->move_end_back_noadjust_image, ttt, vthbox);
+
+  ttt = "Move the end of this track forward by the amount selected below, "
+	"adjusting the beginning of the next track forward if they would "
+	"overlap";
+  uinfo->move_end_forward_adjust_button =
+      VTEditImageButton(ginfo, MoveEndForwardClicked,
+			uinfo->move_end_forward_adjust_image, ttt, vthbox);
+
+  /* End move end section */
+  /* Move start section */
+
+  vthbox = gtk_hbox_new(FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vtbox), vthbox, FALSE, FALSE, 0);
+  gtk_widget_show(vthbox);
+
+
+  ttt = "Move the beginning of this track to the current track position "
+	"without adjusting the previous track";
+  uinfo->move_beginning_here_noadjust_button =
+      VTEditImageButton(ginfo, MoveBeginningToHereNoAdjustClicked,
+			uinfo->move_beginning_here_noadjust_image, ttt, vthbox);
+
+  ttt = "Move the beginning of this track to the current track position, "
+	"adjusting the end of the previous track to match if it is adjacent to "
+	"the beginning of this one";
+  uinfo->move_beginning_here_adjust_button =
+      VTEditImageButton(ginfo, MoveBeginningToHereAdjustClicked,
+			uinfo->move_beginning_here_adjust_image, ttt, vthbox);
+
+  ttt = "Move the beginning of this track forward by the amount selected below "
+	"without adjusting the previous track";
+  uinfo->move_beginning_forward_noadjust_button =
+      VTEditImageButton(ginfo, MoveBeginningForwardNoAdjustClicked,
+			uinfo->move_beginning_forward_noadjust_image, ttt, vthbox);
+
+  ttt = "Move the beginning of this track forward by the amount selected below,"
+	" adjusting the end of the previous track to match if it is adjacent to"
+	" the beginning of this one";
+  uinfo->move_beginning_forward_adjust_button =
+      VTEditImageButton(ginfo, MoveBeginningForwardAdjustClicked,
+			uinfo->move_beginning_forward_adjust_image, ttt,
+			vthbox);
+
+  ttt = "Move the beginning of this track backward by the amount selected "
+	"below, adjusting the end of the previous track backward if they would "
+	"overlap";
+  uinfo->move_beginning_back_adjust_button =
+      VTEditImageButton(ginfo, MoveBeginningBackwardClicked,
+			uinfo->move_beginning_back_adjust_image, ttt, vthbox);
+
+  /* End move start section */
+
+  /* Begin adjustment amount section */
+
+  vthbox = gtk_hbox_new(FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vtbox), vthbox, FALSE, FALSE, 0);
+  gtk_widget_show(vthbox);
+
+  adj = gtk_adjustment_new(1, 5, 100, 1, 1, 1);
+
+  button = gtk_spin_button_new(GTK_ADJUSTMENT(adj), 1, 0);
+  gtk_box_pack_start(GTK_BOX(vthbox), button, FALSE, FALSE, 0);
+  uinfo->adjustment_count_spin_button = button;
+  gtk_widget_show(button);
+
+  list = g_list_append(NULL, _("frames"));
+  list = g_list_append(list, _("seconds"));
+  list = g_list_append(list, _("minutes"));
+
+  button = gtk_combo_new();
+  gtk_combo_set_popdown_strings(GTK_COMBO(button), list);
+  gtk_editable_delete_text(GTK_EDITABLE(GTK_COMBO(button)->entry), 0, -1);
+  position = 0;
+  gtk_editable_insert_text(GTK_EDITABLE(GTK_COMBO(button)->entry), _("seconds"), strlen(_("seconds")), &position);
+  gtk_box_pack_start(GTK_BOX(vthbox), button, FALSE, FALSE, 0);
+  gtk_editable_set_editable(GTK_EDITABLE(GTK_COMBO(button)->entry), FALSE);
+  uinfo->adjustment_unit_combo = button;
+  gtk_widget_show(button);
+
+  /* End adjustment amount section */
+
+  /* Begin vtracknum section */
+  vthbox = gtk_hbox_new(FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vtbox), vthbox, FALSE, FALSE, 0);
+  gtk_widget_show(vthbox);
+
+  label = gtk_label_new(_("Set VTracknum to "));
+  gtk_box_pack_start(GTK_BOX(vthbox), label, FALSE, TRUE, 0);
+  gtk_widget_show(label);
+
+  adj = gtk_adjustment_new(1, 1, 1000, 1, 1, 1);
+  button = gtk_spin_button_new(GTK_ADJUSTMENT(adj), 1, 0);
+  gtk_box_pack_start(GTK_BOX(vthbox), button, FALSE, FALSE, 0);
+  uinfo->set_vtracknum_spin_button = button;
+  gtk_widget_show(button);
+
+  gtk_signal_connect(GTK_OBJECT(adj), "value-changed",
+		     GTK_SIGNAL_FUNC(VTracknumChanged), ginfo);
+
+  button = gtk_check_button_new_with_label(_("Adjust following tracks"));
+  gtk_box_pack_start(GTK_BOX(vthbox), button, FALSE, FALSE, 0);
+  uinfo->set_vtracknum_adjust_check_button = button;
+  gtk_widget_show(button);
+
+  /* end vtrack section */
+
+  /* End VTrack edit section */
+
   gtk_container_add(GTK_CONTAINER(frame),vbox);
   gtk_widget_show(vbox);
 
@@ -288,17 +551,42 @@ void UpdateMultiArtist(GtkWidget *widget,gpointer data)
 {
   GripInfo *ginfo;
   GripGUI *uinfo;
+  gboolean multi_artist;
+  
 
   ginfo=(GripInfo *)data;
   uinfo=&(ginfo->gui_info);
 
-  if(!ginfo->ddata.data_multi_artist) {
-    gtk_widget_hide(uinfo->multi_artist_box);
-    UpdateGTK();
-  }
-  else {
-    gtk_widget_show(uinfo->multi_artist_box);
-  }
+  multi_artist = gtk_toggle_button_get_active(
+      GTK_TOGGLE_BUTTON(uinfo->multi_artist_button));
+
+  if (multi_artist)
+	  gtk_widget_show(uinfo->multi_artist_box);
+  else
+	  gtk_widget_hide(uinfo->multi_artist_box);
+}
+
+void RetargetMultiArtistCheckButton(GripInfo *ginfo, gboolean *oldvar) {
+  gboolean *var = &ginfo->Disc.instance->data.multi_artist;
+  GtkWidget *widget = ginfo->gui_info.multi_artist_button;
+
+  RetargetCheckButton(widget, var, oldvar);
+  UpdateMultiArtist(NULL, ginfo);
+}
+
+void UpdateVTrackEdit(GtkWidget *widget, gpointer data) {
+  GripInfo *ginfo = (GripInfo *)data;
+  GripGUI *uinfo = &ginfo->gui_info;
+
+  gboolean vtrack_edit;
+
+  vtrack_edit = gtk_toggle_button_get_active(
+      GTK_TOGGLE_BUTTON(uinfo->vtrack_edit_button));
+
+  if (vtrack_edit)
+	gtk_widget_show(uinfo->vtrack_edit_box);
+  else
+	gtk_widget_hide(uinfo->vtrack_edit_box);
 }
 
 void ToggleTrackEdit(GtkWidget *widget,gpointer data)
@@ -330,34 +618,54 @@ void ToggleTrackEdit(GtkWidget *widget,gpointer data)
   uinfo->track_edit_visible=!uinfo->track_edit_visible;
 }
 
-void SetTitle(GripInfo *ginfo,char *title)
-{
+void UpdateTitleEdit(GripInfo *ginfo) {
+  DiscInstance *ins = ginfo->Disc.instance;
+  gchar *title = ins->data.title;
+
   g_signal_handlers_block_by_func(G_OBJECT(ginfo->gui_info.title_edit_entry),
                                   TitleEditChanged,(gpointer)ginfo);
 
   gtk_entry_set_text(GTK_ENTRY(ginfo->gui_info.title_edit_entry),title);
-  gtk_entry_set_position(GTK_ENTRY(ginfo->gui_info.title_edit_entry),0);
-
-  strcpy(ginfo->ddata.data_title,title);
-  gtk_label_set(GTK_LABEL(ginfo->gui_info.disc_name_label),title);
+  gtk_entry_set_position(GTK_ENTRY(ginfo->gui_info.title_edit_entry), 0);
 
   g_signal_handlers_unblock_by_func(G_OBJECT(ginfo->gui_info.title_edit_entry),
                                     TitleEditChanged,(gpointer)ginfo);
 }
 
-void SetArtist(GripInfo *ginfo,char *artist)
+void SetTitle(GripInfo *ginfo, DiscInstance *ins, DiscGuiInstance *gins, char *title)
 {
+  strcpy(ins->data.title, title);
+
+  gtk_label_set(GTK_LABEL(gins->disc_name_label), title);
+  gtk_tooltips_set_tip(gins->tabtooltips, gins->trackpage, ins->data.title, "");
+  if (ins == ginfo->Disc.instance) {
+	  UpdateTitleEdit(ginfo);
+  }
+}
+
+void UpdateArtistEdit(GripInfo *ginfo) {
+  DiscInstance *ins = ginfo->Disc.instance;
+  gchar *artist = ins->data.artist;
+
   g_signal_handlers_block_by_func(G_OBJECT(ginfo->gui_info.artist_edit_entry),
-                                  ArtistEditChanged,(gpointer)ginfo);
+                                   ArtistEditChanged,(gpointer)ginfo);
 
   gtk_entry_set_text(GTK_ENTRY(ginfo->gui_info.artist_edit_entry),artist);
-  gtk_entry_set_position(GTK_ENTRY(ginfo->gui_info.artist_edit_entry),0);
-
-  strcpy(ginfo->ddata.data_artist,artist);
-  gtk_label_set(GTK_LABEL(ginfo->gui_info.disc_artist_label),artist);
+  gtk_entry_set_position(GTK_ENTRY(ginfo->gui_info.artist_edit_entry), 0);
 
   g_signal_handlers_unblock_by_func(G_OBJECT(ginfo->gui_info.artist_edit_entry),
                                     ArtistEditChanged,(gpointer)ginfo);
+}
+
+void SetArtist(GripInfo *ginfo, DiscInstance *ins, DiscGuiInstance *gins, char *artist)
+{
+  strcpy(ins->data.artist, artist);
+
+  gtk_label_set(GTK_LABEL(gins->disc_artist_label),artist);
+
+  if (ins == ginfo->Disc.instance) {
+	  UpdateArtistEdit(ginfo);
+  }
 }
 
 void SetYear(GripInfo *ginfo,int year)
@@ -384,39 +692,42 @@ static void SaveDiscInfo(GtkWidget *widget,gpointer data)
   ginfo=(GripInfo *)data;
 
   if(ginfo->have_disc) {
-    if(DiscDBWriteDiscData(&(ginfo->disc),&(ginfo->ddata),NULL,TRUE,FALSE,
-                           "utf-8")<0)
-      gnome_app_warning((GnomeApp *)ginfo->gui_info.app,
-                        _("Error saving disc data."));
+	  if(DiscDBWriteDiscData(&ginfo->Disc, NULL, TRUE, FALSE,
+				 "utf-8") < 0)
+		gnome_app_warning((GnomeApp *)ginfo->gui_info.app,
+				    _("Error saving disc data"));
+	if (DiscDBWriteVTrackData(&ginfo->Disc,"utf-8") != 0)
+		gnome_app_warning((GnomeApp *)ginfo->gui_info.app,
+				  _("Error saving vtrack data"));
   }
-  else gnome_app_warning((GnomeApp *)ginfo->gui_info.app,
-                         _("No disc present."));
+  else 		gnome_app_warning((GnomeApp *)ginfo->gui_info.app,
+				  _("No disc present"));
 }
 
 static void TitleEditChanged(GtkWidget *widget,gpointer data)
 {
   GripInfo *ginfo;
+  const gchar *title;
 
   ginfo=(GripInfo *)data;
 
-  strcpy(ginfo->ddata.data_title,
-         gtk_entry_get_text(GTK_ENTRY(ginfo->gui_info.title_edit_entry)));
+  title = gtk_entry_get_text(GTK_ENTRY(ginfo->gui_info.title_edit_entry));
 
-  gtk_label_set(GTK_LABEL(ginfo->gui_info.disc_name_label),
-                ginfo->ddata.data_title);
+  strcpy(ginfo->Disc.instance->data.title, title);
+  
+  gtk_label_set(GTK_LABEL(ginfo->gui_info.instance->disc_name_label), title);
 }
 
 static void ArtistEditChanged(GtkWidget *widget,gpointer data)
 {
   GripInfo *ginfo;
+  const gchar *artist;
 
   ginfo=(GripInfo *)data;
 
-  strcpy(ginfo->ddata.data_artist,
-         gtk_entry_get_text(GTK_ENTRY(ginfo->gui_info.artist_edit_entry)));
-
-  gtk_label_set(GTK_LABEL(ginfo->gui_info.disc_artist_label),
-                ginfo->ddata.data_artist);
+  artist = gtk_entry_get_text(GTK_ENTRY(ginfo->gui_info.artist_edit_entry));
+  strcpy(ginfo->Disc.instance->data.artist,artist);
+  gtk_label_set(GTK_LABEL(ginfo->gui_info.instance->disc_artist_label),artist);
 }
 
 static void YearEditChanged(GtkWidget *widget,gpointer data)
@@ -425,42 +736,48 @@ static void YearEditChanged(GtkWidget *widget,gpointer data)
 
   ginfo=(GripInfo *)data;
 
-  ginfo->ddata.data_year=
+  ginfo->Disc.instance->data.year =
     gtk_spin_button_get_value_as_int(GTK_SPIN_BUTTON(ginfo->gui_info.
   						     year_spin_button));
 }
 
 void TrackEditChanged(GtkWidget *widget,gpointer data)
 {
-  GripInfo *ginfo;
+  GripInfo *ginfo = (GripInfo *)data;
+  DiscGuiInstance *gins = ginfo->gui_info.instance;
+  DiscDataInstance *ins = &ginfo->Disc.instance->data;
   char newname[256];
   GtkTreeIter iter;
   gint i;
 
-  ginfo=(GripInfo *)data;
 
-  strcpy(ginfo->ddata.data_track[CURRENT_TRACK].track_name,
-         gtk_entry_get_text(GTK_ENTRY(ginfo->gui_info.track_edit_entry)));
+
+  strcpy(ins->tracks[CURRENT_TRACK].track_name,
+	 gtk_entry_get_text(GTK_ENTRY(ginfo->gui_info.track_edit_entry)));
+
+  strcpy(ins->tracks[CURRENT_TRACK].track_artist,
+	 gtk_entry_get_text(GTK_ENTRY(ginfo->gui_info.track_artist_edit_entry)));
+
   
-  strcpy(ginfo->ddata.data_track[CURRENT_TRACK].track_artist,
-         gtk_entry_get_text(GTK_ENTRY(ginfo->gui_info.track_artist_edit_entry)));
-  
-  if(*ginfo->ddata.data_track[CURRENT_TRACK].track_artist)
+  if(*ins->tracks[CURRENT_TRACK].track_artist)
     g_snprintf(newname,256,"%02d  %s (%s)",CURRENT_TRACK+1,
-               ginfo->ddata.data_track[CURRENT_TRACK].track_name,
-               ginfo->ddata.data_track[CURRENT_TRACK].track_artist);
+	       ins->tracks[CURRENT_TRACK].track_name,
+	       ins->tracks[CURRENT_TRACK].track_artist);
+
   else
     g_snprintf(newname,256,"%02d  %s",CURRENT_TRACK+1,
-               ginfo->ddata.data_track[CURRENT_TRACK].track_name);
+	       ins->tracks[CURRENT_TRACK].track_name);
 
-  gtk_tree_model_get_iter_first(GTK_TREE_MODEL(ginfo->gui_info.track_list_store),
+
+  gtk_tree_model_get_iter_first(GTK_TREE_MODEL(gins->track_list_store),
                                 &iter);
   for(i=0;i<CURRENT_TRACK;i++)
-    gtk_tree_model_iter_next(GTK_TREE_MODEL(ginfo->gui_info.track_list_store),
+    gtk_tree_model_iter_next(GTK_TREE_MODEL(gins->track_list_store),
                              &iter);
-  gtk_list_store_set(ginfo->gui_info.track_list_store,&iter,
+  gtk_list_store_set(gins->track_list_store,&iter,
 			 TRACKLIST_TRACK_COL,newname,-1);
-  /*  gtk_clist_set_text(GTK_CLIST(ginfo->gui_info.trackclist),
+
+  /*  gtk_clist_set_text(GTK_CLIST(ginfo->gui_info.instance->trackclist),
       CURRENT_TRACK,0,newname);*/
 }
 
@@ -481,8 +798,8 @@ static void ID3GenreChanged(GtkWidget *widget,gpointer data)
 
   ginfo=(GripInfo *)data;
 
-  ginfo->ddata.data_id3genre=(int)gtk_object_get_user_data(GTK_OBJECT(widget));
-  /*  ginfo->ddata.data_genre=ID32DiscDB(ginfo->ddata.data_id3genre);*/
+  ginfo->Disc.instance->data.id3genre=(int)gtk_object_get_user_data(GTK_OBJECT(widget));
+  ginfo->Disc.instance->data.genre=ID32DiscDB(ginfo->Disc.instance->data.id3genre);
 }
 
 static void SeparateFields(char *buf,char *field1,char *field2,char *sep)
@@ -508,23 +825,23 @@ static void SeparateFields(char *buf,char *field1,char *field2,char *sep)
 
 static void SplitTitleArtist(GtkWidget *widget,gpointer data)
 {
-  GripInfo *ginfo;
+  GripInfo *ginfo = (GripInfo *)data;
+  DiscDataInstance *ins = &ginfo->Disc.p_instance.data;
   int track;
   int mode;
 
-  ginfo=(GripInfo *)data;
   mode=(int)gtk_object_get_user_data(GTK_OBJECT(widget));
 
-  for(track=0;track<ginfo->disc.num_tracks;track++) {
+  for(track = 0; track < ginfo->Disc.p_instance.info.num_tracks; track++) {
     if(mode==0)
-      SeparateFields(ginfo->ddata.data_track[track].track_name,
-		     ginfo->ddata.data_track[track].track_name,
-		     ginfo->ddata.data_track[track].track_artist,
+      SeparateFields(ins->tracks[track].track_name,
+		     ins->tracks[track].track_name,
+		     ins->tracks[track].track_artist,
 		     ginfo->title_split_chars);
     else 
-      SeparateFields(ginfo->ddata.data_track[track].track_name,
-		     ginfo->ddata.data_track[track].track_artist,
-		     ginfo->ddata.data_track[track].track_name,
+      SeparateFields(ins->tracks[track].track_name,
+		     ins->tracks[track].track_artist,
+		     ins->tracks[track].track_name,
 		     ginfo->title_split_chars);
   }
 
@@ -540,29 +857,29 @@ static void SubmitEntryCB(GtkWidget *widget,gpointer data)
 
   if(!ginfo->have_disc) {
     gnome_app_warning((GnomeApp *)ginfo->gui_info.app,
-                      _("Cannot submit. No disc is present."));
+		      _("Cannot submit\nNo disc is present"));
 
     return;
   }
 
-  if(!ginfo->ddata.data_genre) {
+  if(!ginfo->Disc.instance->data.genre) {
     /*    gnome_app_warning((GnomeApp *)ginfo->gui_info.app,
-          _("Submission requires a genre other than 'unknown'."));*/
+	  _("Submission requires a genre other than 'unknown'"));*/
     GetDiscDBGenre(ginfo);
 
     return;
   }
 
-  if(!*ginfo->ddata.data_title) {
+  if(!ginfo->Disc.instance->data.title[0]) {
     gnome_app_warning((GnomeApp *)ginfo->gui_info.app,
-                      _("You must enter a disc title."));
+		      _("You must enter a disc title"));
 
     return;
   }
 
-  if(!*ginfo->ddata.data_artist) {
+  if(!ginfo->Disc.instance->data.artist[0]) {
     gnome_app_warning((GnomeApp *)ginfo->gui_info.app,
-                      _("You must enter a disc artist."));
+		      _("You must enter a disc artist"));
     
     return;
   }
@@ -664,5 +981,5 @@ static void DiscDBGenreChanged(GtkWidget *widget,gpointer data)
 
   ginfo=(GripInfo *)data;
 
-  ginfo->ddata.data_genre=(int)gtk_object_get_user_data(GTK_OBJECT(widget));
+  ginfo->Disc.instance->data.genre=(int)gtk_object_get_user_data(GTK_OBJECT(widget));
 }

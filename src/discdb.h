@@ -68,7 +68,7 @@ struct query_list_entry {
    char list_artist[256];
 };
 
-#define MAX_INEXACT_MATCHES			16
+#define MAX_INEXACT_MATCHES			64
 
 /* DiscDB query structure */
 
@@ -87,41 +87,46 @@ typedef struct _discdb_query {
 /* Track database structure */
 
 typedef struct _track_data {
-  char track_name[256];	              /* Track name */
-  char track_artist[256];	      /* Track artist */
-  char track_extended[4096];	      /* Extended information */
+  char track_name[256];
+  char track_artist[256];
+  char track_extended[4096];	/* Track-specific extended information */
+  int  vtracknum;		/* Track number for display and tagging */
 } TrackData;
 
 /* Disc database structure */
 
 typedef struct _disc_data {
-  unsigned int data_id;	              /* CD id */
-  char data_title[256];	              /* Disc title */
-  char data_artist[256];	      /* Disc artist */
-  char data_extended[4096];	      /* Extended information */
-  int data_genre;		      /* Discdb genre */
-  int data_id3genre;                  /* ID3 genre */
-  int data_year;                      /* Disc year */
-  char data_playlist[256];            /* Playlist info */
-  gboolean data_multi_artist;         /* Is CD multi-artist? */
-  TrackData data_track[MAX_TRACKS];   /* Track names */
-  int revision;                       /* Database revision */
+  unsigned int data_id;		/* CD id */
+  int revision;			/* Database revision */
 } DiscData;
 
+typedef struct _disc_data_instance {
+  TrackData tracks[MAX_TRACKS];
+  char title[256];		/* Disc title */
+  char artist[256];		/* Disc artist */
+  char extended[4096];		/* Disc extended information */
+  int genre;			/* Discdb genre */
+  int id3genre;			/* ID3 genre */
+  int year;			/* Disc year */
+  char playlist[256];		/* Playlist info */
+  gboolean multi_artist;	/* Is CD multi-artist? */
+} DiscDataInstance;
 
-unsigned int DiscDBDiscid(DiscInfo *disc);
+unsigned int DiscDBDiscid(Disc *Disc);
 char *DiscDBGenre(int genre);
 int DiscDBGenreValue(char *genre);
-gboolean DiscDBDoQuery(DiscInfo *disc,DiscDBServer *server,
+gboolean DiscDBDoQuery(Disc *Disc,DiscDBServer *server,
 		     DiscDBHello *hello,DiscDBQuery *query);
-gboolean DiscDBRead(DiscInfo *disc,DiscDBServer *server,
+gboolean DiscDBRead(Disc *Disc, DiscDBServer *server,
 		    DiscDBHello *hello,DiscDBEntry *entry,
-		    DiscData *data,char *encoding);
-gboolean DiscDBStatDiscData(DiscInfo *disc);
-int DiscDBReadDiscData(DiscInfo *disc, DiscData *ddata, const char *encoding);
-int DiscDBWriteDiscData(DiscInfo *disc,DiscData *ddata,FILE *outfile,
+		    char *encoding);
+gboolean DiscDBStatDiscData(Disc *Disc);
+int DiscDBReadDiscData(Disc *Disc, const char *encoding);
+int DiscDBWriteDiscData(Disc *Disc, FILE *outfile,
                         gboolean gripext,gboolean freedbext,char *encoding);
 void DiscDBParseTitle(char *buf,char *title,char *artist,char *sep);
 char *ChopWhite(char *buf);
+int DiscDBWriteVTrackData(Disc *Disc, char *encoding);
+void ReinitTrack(TrackInfo *track);
 
 #endif /* GRIP_DISCDB_H */

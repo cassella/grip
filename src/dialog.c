@@ -282,3 +282,12 @@ GtkWidget *MakeCheckButton(GtkWidget **button,gboolean *var,char *name)
 
   return widget;
 }
+
+void RetargetCheckButton(GtkWidget *widget, gboolean *var, gboolean *oldvar) {
+  gtk_signal_disconnect_by_func(GTK_OBJECT(widget), GTK_SIGNAL_FUNC(ChangeBoolVal), oldvar);
+
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), *var);
+  gtk_signal_connect(GTK_OBJECT(widget),"clicked",
+					 GTK_SIGNAL_FUNC(ChangeBoolVal),
+					 (gpointer)var);
+}

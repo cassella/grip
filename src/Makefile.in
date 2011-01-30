@@ -154,7 +154,9 @@ grip_SOURCES = \
 	eggtrayicon.c \
 	eggtrayicon.h \
 	tray.c \
-	tray.h 
+	tray.h \
+	vtracks.c \
+	vtracks.h
 
 
 grip_LDADD = @TERMINAL_WIDGET_LIBS@ $(CDPAR_LIBS) $(ID3_LIBS)
@@ -170,7 +172,8 @@ am_grip_OBJECTS = cppmain.$(OBJEXT) main.$(OBJEXT) grip.$(OBJEXT) \
 	rip.$(OBJEXT) cdpar.$(OBJEXT) id3.$(OBJEXT) discdb.$(OBJEXT) \
 	uihelper.$(OBJEXT) status_window.$(OBJEXT) dialog.$(OBJEXT) \
 	gripcfg.$(OBJEXT) parsecfg.$(OBJEXT) launch.$(OBJEXT) \
-	gain_analysis.$(OBJEXT) eggtrayicon.$(OBJEXT) tray.$(OBJEXT)
+	gain_analysis.$(OBJEXT) eggtrayicon.$(OBJEXT) tray.$(OBJEXT) \
+	vtracks.$(OBJEXT)
 grip_OBJECTS = $(am_grip_OBJECTS)
 grip_DEPENDENCIES =
 grip_LDFLAGS =

@@ -71,6 +71,11 @@ void ScanDisc(GtkWidget *widget,gpointer data);
 void UpdateDisplay(GripInfo *ginfo);
 void UpdateTracks(GripInfo *ginfo);
 void SubmitEntry(gint reply,gpointer data);
+void PageChanged(GtkNotebook *notebook, GtkNotebookPage *page,
+				 gint page_num, gpointer user_data);
+void PrevTrack(GripInfo *ginfo);
+void UpdateCurrentTrackset(GripInfo *ginfo);
+
 
 void PlayTrackCB(GtkWidget *widget,gpointer data);
 void StopPlayCB(GtkWidget *widget,gpointer data);

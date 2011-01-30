@@ -296,6 +296,7 @@ void MakeRipPage(GripInfo *ginfo)
 
   gtk_container_add(GTK_CONTAINER(rippage),vbox);
   gtk_widget_show(vbox);
+  uinfo->rip_page = rippage;
 }
 
 static void RipPartialChanged(GtkWidget *widget,gpointer data)
@@ -347,7 +348,7 @@ static void DBScan(GtkWidget *widget,gpointer data)
 
   if(!ginfo->have_disc) return;
 
-  for(track=0;track<ginfo->disc.num_tracks;track++) {
+  for(track = 0; track < ginfo->Disc.instance->info.num_tracks; track++) {
     FillInTrackInfo(ginfo,track,&enc_track);
     
     str=g_string_new(NULL);
@@ -604,7 +605,7 @@ static gboolean AddM3U(GripInfo *ginfo)
   }
   g_free(conv_str);
   
-  for(i=0;i<ginfo->disc.num_tracks;i++) {
+  for(i = 0; i < ginfo->Disc.instance->info.num_tracks; i++) {
     /* Only add to the m3u if the track is selected for ripping */
     if(TrackIsChecked(&(ginfo->gui_info),i)) {
       g_string_truncate(str,0);
@@ -660,8 +661,8 @@ void KillRip(GtkWidget *widget,gpointer data)
       ginfo->num_wavs--;
     
     /* Need to decrement all_mp3size */
-    for (track=0;track<ginfo->disc.num_tracks;++track) {
-      if ((!IsDataTrack(&(ginfo->disc),track)) &&
+    for (track=0;track<ginfo->Disc.instance->info.num_tracks;++track) {
+      if ((!IsDataTrack(&(ginfo->Disc),track)) &&
 	  (TrackIsChecked(&(ginfo->gui_info),track))) {
 	ginfo->all_encsize-=CalculateEncSize(ginfo,track);
       }
@@ -675,6 +676,7 @@ void KillRip(GtkWidget *widget,gpointer data)
 #endif
     }
     else kill(ginfo->rippid,SIGKILL);
+    VTrackEditStoppedRipping(&ginfo->gui_info);
   }
 }
 
@@ -740,7 +742,7 @@ static void ID3Add(GripInfo *ginfo,char *file,EncodeTrack *enc_track)
 		 (*(enc_track->disc_artist))?enc_track->disc_artist:"Unknown",
 		 (*(enc_track->disc_name))?enc_track->disc_name:"Unknown",
 		 year,comment->str,enc_track->id3_genre,
-		 enc_track->track_num+1,ginfo->id3v2_encoding);
+		 enc_track->v_track_num,ginfo->id3v2_encoding);
   }
 #endif
   if(ginfo->doid3) {
@@ -749,7 +751,7 @@ static void ID3Add(GripInfo *ginfo,char *file,EncodeTrack *enc_track)
 		 (*(enc_track->disc_artist))?enc_track->disc_artist:"Unknown",
 		 (*(enc_track->disc_name))?enc_track->disc_name:"Unknown",
 		 year,comment->str,enc_track->id3_genre,
-		 enc_track->track_num+1,ginfo->id3_encoding);
+		 enc_track->v_track_num,ginfo->id3_encoding);
   }
 
   g_string_free(comment,TRUE);
@@ -795,6 +797,8 @@ void UpdateRipProgress(GripInfo *ginfo)
   uinfo=&(ginfo->gui_info);
 
   if(ginfo->ripping) {
+	int num_tracks = ginfo->Disc.instance->info.num_tracks;
+
     if(stat(ginfo->ripfile,&mystat)>=0) {
       percent=(gfloat)mystat.st_size/(gfloat)ginfo->ripsize;
       if(percent>1.0) percent=1.0;
@@ -867,6 +871,7 @@ void UpdateRipProgress(GripInfo *ginfo)
     /* Check if a rip finished */
     if((ginfo->using_builtin_cdp&&!ginfo->in_rip_thread) ||
        (!ginfo->using_builtin_cdp&&waitpid(ginfo->rippid,NULL,WNOHANG))) {
+
       if(!ginfo->using_builtin_cdp) waitpid(ginfo->rippid,NULL,0);
       else {
 	CopyPixmap(GTK_PIXMAP(uinfo->empty_image),
@@ -874,7 +879,6 @@ void UpdateRipProgress(GripInfo *ginfo)
 	CopyPixmap(GTK_PIXMAP(uinfo->empty_image),
 		   GTK_PIXMAP(uinfo->smile_indicator));
       }
-
       LogStatus(ginfo,_("Rip finished\n"));
       ginfo->all_riplast=0;
       ginfo->ripping=FALSE;
@@ -905,11 +909,11 @@ void UpdateRipProgress(GripInfo *ginfo)
 	      ginfo->num_wavs);
 
 	Debug(_("Next track is %d, total is %d\n"),
-	      NextTrackToRip(ginfo),ginfo->disc.num_tracks);
+	      NextTrackToRip(ginfo), num_tracks);
 
 	if(!ginfo->rip_partial&&
 	   (ginfo->num_wavs<ginfo->max_wavs||
-	    NextTrackToRip(ginfo)==ginfo->disc.num_tracks)) {
+	    NextTrackToRip(ginfo) == num_tracks)) {
 	  Debug(_("Check if we need to rip another track\n"));
 	  if(!RipNextTrack(ginfo)) RipIsFinished(ginfo,FALSE);
 	  else { gtk_label_set(GTK_LABEL(uinfo->rip_prog_label),_("Rip: Idle"));  }
@@ -1072,7 +1076,7 @@ static void RipIsFinished(GripInfo *ginfo,gboolean aborted)
   ginfo->rip_finished=time(NULL);
 
   /* Re-open the cdrom device if it was closed */
-  if(ginfo->disc.cd_desc<0) CDInitDevice(ginfo->disc.devname,&(ginfo->disc));
+  if(ginfo->Disc.info.cd_desc<0) CDInitDevice(ginfo->Disc.info.devname,&(ginfo->Disc.info));
 
   /* Do post-rip stuff only if we weren't explicitly aborted */
   if(!aborted) {
@@ -1142,7 +1146,7 @@ char *TranslateSwitch(char switch_char,void *data,gboolean *munge)
     *munge=FALSE;
     break;
   case 't':
-    g_snprintf(res,PATH_MAX,"%02d",enc_track->track_num+1);
+    g_snprintf(res,PATH_MAX,"%02d",enc_track->v_track_num);
     *munge=FALSE;
     break;
   case 's':
@@ -1156,7 +1160,7 @@ char *TranslateSwitch(char switch_char,void *data,gboolean *munge)
   case 'n':
     if(*(enc_track->song_name))
       g_snprintf(res,PATH_MAX,"%s",enc_track->song_name);
-    else g_snprintf(res,PATH_MAX,"Track%02d",enc_track->track_num+1);
+    else g_snprintf(res,PATH_MAX,"Track%02d",enc_track->v_track_num);
     break;
   case 'a':
     if(*(enc_track->song_artist))
@@ -1217,32 +1221,34 @@ char *TranslateSwitch(char switch_char,void *data,gboolean *munge)
 
 static void CheckDupNames(GripInfo *ginfo)
 {
+  DiscDataInstance *ins = &ginfo->Disc.instance->data;
   int track,track2;
+  int num_tracks = ginfo->Disc.instance->info.num_tracks;
   int numdups[MAX_TRACKS];
   int count;
   char buf[256];
 
-  for(track=0;track<ginfo->disc.num_tracks;track++)
+  for(track = 0; track < num_tracks; track++)
     numdups[track]=0;
 
-  for(track=0;track<(ginfo->disc.num_tracks-1);track++) {
+  for(track = 0; track < num_tracks - 1; track++) {
     if(!numdups[track]) {
       count=0;
 
-      for(track2=track+1;track2<ginfo->disc.num_tracks;track2++) {
-	if(!strcmp(ginfo->ddata.data_track[track].track_name,
-		   ginfo->ddata.data_track[track2].track_name))
+      for(track2 = track + 1; track2 < num_tracks; track2++) {
+	if(!strcmp(ins->tracks[track].track_name,
+		   ins->tracks[track2].track_name))
 	  numdups[track2]=++count;
       }
     }
   }
 
-  for(track=0;track<ginfo->disc.num_tracks;track++) {
+  for(track = 0; track < num_tracks; track++) {
     if(numdups[track]) {
-      g_snprintf(buf,260,"%s (%d)",ginfo->ddata.data_track[track].track_name,
+      g_snprintf(buf,260,"%s (%d)",ins->tracks[track].track_name,
 		 numdups[track]+1);
 
-      strcpy(ginfo->ddata.data_track[track].track_name,buf);
+      strcpy(ins->tracks[track].track_name,buf);
     }
   }
 }
@@ -1288,11 +1294,11 @@ void DoRip(GtkWidget *widget,gpointer data)
     return;
   }
 
-  CDStop(&(ginfo->disc));
+  CDStop(&ginfo->Disc.info);
   ginfo->stopped=TRUE;
 
   /* Close the device so as not to conflict with ripping */
-  CDCloseDevice(&(ginfo->disc));
+  CDCloseDevice(&(ginfo->Disc.info));
     
   if(ginfo->ripping) {
     ginfo->doencode=FALSE;
@@ -1315,7 +1321,7 @@ void DoRip(GtkWidget *widget,gpointer data)
     ginfo->rip_track=0;
   }
 
-  if(NextTrackToRip(ginfo)==ginfo->disc.num_tracks) {
+  if(NextTrackToRip(ginfo) == ginfo->Disc.instance->info.num_tracks) {
     gnome_app_ok_cancel_modal
       ((GnomeApp *)ginfo->gui_info.app,
        _("No tracks selected.\nRip whole CD?\n"),
@@ -1323,6 +1329,8 @@ void DoRip(GtkWidget *widget,gpointer data)
     return;
   }
   
+  VTrackEditStartedRipping(&ginfo->gui_info);
+
   ginfo->stop_rip=FALSE;
 
   CalculateAll(ginfo);
@@ -1345,7 +1353,7 @@ static void RipWholeCD(gint reply,gpointer data)
 
   ginfo=(GripInfo *)data;
   
-  for(track=0;track<ginfo->disc.num_tracks;++track)
+  for(track = 0; track < ginfo->Disc.instance->info.num_tracks; ++track)       
     SetChecked(&(ginfo->gui_info),track,TRUE);
 
   if(ginfo->doencode) DoRip(NULL,(gpointer)ginfo);
@@ -1354,17 +1362,19 @@ static void RipWholeCD(gint reply,gpointer data)
 
 static int NextTrackToRip(GripInfo *ginfo)
 {
+  Disc *Disc = &ginfo->Disc;
   int track;
 
-  for(track=0;(track<ginfo->disc.num_tracks)&&
+  for(track = 0; (track < Disc->instance->info.num_tracks) &&
 	(!TrackIsChecked(&(ginfo->gui_info),track)||
-	IsDataTrack(&(ginfo->disc),track));track++);
+	IsDataTrack(Disc, track)); track++);
 
   return track;
 }
 
 static gboolean RipNextTrack(GripInfo *ginfo)
 {
+  DiscInfoInstance *ins = &ginfo->Disc.instance->info;
   GripGUI *uinfo;
   char tmp[PATH_MAX];
   int arg;
@@ -1390,7 +1400,8 @@ static gboolean RipNextTrack(GripInfo *ginfo)
   Debug(_("First checked track is %d\n"),ginfo->rip_track+1);
 
   /* See if we are finished ripping */
-  if(ginfo->rip_track==ginfo->disc.num_tracks) {
+  if (ginfo->rip_track == ins->num_tracks) {
+    VTrackEditStoppedRipping(uinfo);
     return FALSE;
   }
 
@@ -1399,25 +1410,27 @@ static gboolean RipNextTrack(GripInfo *ginfo)
   if(ginfo->have_disc&&ginfo->rip_track>=0) {
     Debug(_("Ripping away!\n"));
 
-    /*    if(!ginfo->rip_partial){
-      gtk_clist_select_row(GTK_CLIST(uinfo->trackclist),ginfo->rip_track,0);
-      }*/
+/*     if(!ginfo->rip_partial){ */
+/*       gtk_clist_select_row(GTK_CLIST(uinfo->instance->trackclist),ginfo->rip_track,0); */
+/*     } */
 
     CopyPixmap(GTK_PIXMAP(uinfo->rip_pix[0]),GTK_PIXMAP(uinfo->rip_indicator));
 
     if(ginfo->stop_between_tracks)
-      CDStop(&(ginfo->disc));
+      CDStop(&(ginfo->Disc.info));
 
     if(!ginfo->rip_partial) {
       ginfo->start_sector=0;
-      ginfo->end_sector=(ginfo->disc.track[ginfo->rip_track+1].start_frame-1)-
-	ginfo->disc.track[ginfo->rip_track].start_frame;
+      ginfo->end_sector = ins->tracks[ginfo->rip_track].num_frames - 1;
 
-      /* Compensate for the gap before a data track */
-      if((ginfo->rip_track<(ginfo->disc.num_tracks-1)&&
-	  IsDataTrack(&(ginfo->disc),ginfo->rip_track+1)&&
-	  (ginfo->end_sector-ginfo->start_sector)>11399))
-	ginfo->end_sector-=11400;
+	  /* Compensate for the gap before a data track.
+	   * If it's a virtual track, assume this is unnecessary. */
+	  if (ginfo->Disc.instance == &ginfo->Disc.p_instance) {
+		if ((ginfo->rip_track< ins->num_tracks - 1 &&
+			IsDataTrack(&ginfo->Disc, ginfo->rip_track + 1) &&
+			(ginfo->end_sector-ginfo->start_sector)>11399))
+		  ginfo->end_sector-=11400;
+	  }
     }
 
     ginfo->ripsize=44+((ginfo->end_sector-ginfo->start_sector)+1)*2352;
@@ -1520,6 +1533,13 @@ static gboolean RipNextTrack(GripInfo *ginfo)
 
       char_args[0]=FindRoot(ginfo->ripexename);
 
+
+      Debug(_("ripping: %s "), ginfo->ripexename);
+      for (arg = 0; args[arg]; arg++)
+        Debug("%s ", args[arg]->str);
+      Debug(_("\nIf rip fails, also check the permissions of "
+	      "/dev/sg* and /dev/sr*\n"));
+
       ginfo->curr_pipe_fd=
 	GetStatusWindowPipe(ginfo->gui_info.rip_status_window);
 
@@ -1587,15 +1607,15 @@ static void ThreadRip(void *arg)
   output_fp=fdopen(dup_output_fd,"w");
   setlinebuf(output_fp);
 
-  CDPRip(ginfo->cd_device,ginfo->force_scsi,ginfo->rip_track+1,
-	 ginfo->start_sector,
-	 ginfo->end_sector,ginfo->ripfile,paranoia_mode,
+  CDPRip(ginfo->cd_device,ginfo->force_scsi, &ginfo->Disc.info,
+		 ginfo->rip_track+1, ginfo->start_sector, ginfo->end_sector,
+	 ginfo->ripfile,paranoia_mode,
 	 &(ginfo->rip_smile_level),&(ginfo->rip_percent_done),
 	 &(ginfo->stop_thread_rip_now),ginfo->calc_gain,
 	 output_fp);
 
   fclose(output_fp);
- 
+
   ginfo->in_rip_thread=FALSE;
 
   pthread_exit(0);
@@ -1604,36 +1624,42 @@ static void ThreadRip(void *arg)
 
 void FillInTrackInfo(GripInfo *ginfo,int track,EncodeTrack *new_track)
 {
+  DiscDataInstance *dins = &ginfo->Disc.instance->data;
+  DiscInfoInstance *iins = &ginfo->Disc.instance->info;
+
   new_track->ginfo=ginfo;
 
   new_track->wav_filename[0]='\0';
   new_track->mp3_filename[0]='\0';
 
   new_track->track_num=track;
-  new_track->start_frame=ginfo->disc.track[track].start_frame;
-  new_track->end_frame=ginfo->disc.track[track+1].start_frame-1;
+  new_track->v_track_num = dins->tracks[track].vtracknum;
+  new_track->start_frame = iins->tracks[track].start_frame;
+  new_track->end_frame = iins->tracks[track].start_frame +
+	                     iins->tracks[track].num_frames;
 #ifdef CDPAR
   new_track->track_gain_adjustment=ginfo->track_gain_adjustment;
   new_track->disc_gain_adjustment=ginfo->disc_gain_adjustment;
 #endif
 
+  /* XXX is this happening twice? */
   /* Compensate for the gap before a data track */
-  if((track<(ginfo->disc.num_tracks-1)&&
-      IsDataTrack(&(ginfo->disc),track+1)&&
-      (new_track->end_frame-new_track->start_frame)>11399))
+  if (track < iins->num_tracks - 1 &&
+      IsDataTrack(&ginfo->Disc, track + 1) &&
+      (new_track->end_frame-new_track->start_frame)>11399)
     new_track->end_frame-=11400;
 
-  new_track->mins=ginfo->disc.track[track].length.mins;
-  new_track->secs=ginfo->disc.track[track].length.secs;
-  new_track->song_year=ginfo->ddata.data_year;
+  new_track->mins = iins->tracks[track].length.mins;
+  new_track->secs = iins->tracks[track].length.secs;
+  new_track->song_year = dins->year;
   g_snprintf(new_track->song_name,256,"%s",
-	     ginfo->ddata.data_track[track].track_name);
+	     dins->tracks[track].track_name);
   g_snprintf(new_track->song_artist,256,"%s",
-	     ginfo->ddata.data_track[track].track_artist);
-  g_snprintf(new_track->disc_name,256,"%s",ginfo->ddata.data_title);
-  g_snprintf(new_track->disc_artist,256,"%s",ginfo->ddata.data_artist);
-  new_track->id3_genre=ginfo->ddata.data_id3genre;
-  new_track->discid=ginfo->ddata.data_id;
+	     dins->tracks[track].track_artist);
+  g_snprintf(new_track->disc_name, 256, "%s", dins->title);
+  g_snprintf(new_track->disc_artist, 256, "%s", dins->artist);
+  new_track->id3_genre = dins->id3genre;
+  new_track->discid=ginfo->Disc.data.data_id;
 }
 
 static void AddToEncode(GripInfo *ginfo,int track)
@@ -1810,8 +1836,8 @@ void CalculateAll(GripInfo *ginfo)
   if (ginfo->rip_partial)
     return;
   
-  for (track=0;track<ginfo->disc.num_tracks;++track) {
-    if (!IsDataTrack(&(ginfo->disc),track) &&
+  for (track=0;track<ginfo->Disc.instance->info.num_tracks;++track) {
+    if (!IsDataTrack(&(ginfo->Disc),track) &&
 	(TrackIsChecked(uinfo,track))) {
       ginfo->all_ripsize+=CalculateWavSize(ginfo,track);
       ginfo->all_encsize+=CalculateEncSize(ginfo,track);
@@ -1825,10 +1851,9 @@ static size_t CalculateWavSize(GripInfo *ginfo, int track)
 {
   int frames;
   
-  frames=(ginfo->disc.track[track+1].start_frame-1)-
-    ginfo->disc.track[track].start_frame;
-  if ((track<(ginfo->disc.num_tracks)-1) &&
-      (IsDataTrack(&(ginfo->disc),track+1)) &&
+  frames = ginfo->Disc.instance->info.tracks[track].num_frames;
+  if ((track<(ginfo->Disc.instance->info.num_tracks)-1) &&
+      (IsDataTrack(&(ginfo->Disc),track+1)) &&
       (frames>11399))
     frames-=11400;
   return frames*2352;
@@ -1838,8 +1863,8 @@ static size_t CalculateEncSize(GripInfo *ginfo, int track)
 {
   double tmp_encsize=0.0;
   /* It's not the best way, but i couldn't find anything better */
-  tmp_encsize=(double)((ginfo->disc.track[track].length.mins*60+
-			ginfo->disc.track[track].length.secs-2)*
+  tmp_encsize=(double)((ginfo->Disc.instance->info.tracks[track].length.mins*60+
+			ginfo->Disc.instance->info.tracks[track].length.secs-2)*
 		       ginfo->kbits_per_sec*1024/8);
   tmp_encsize-=tmp_encsize*0.0154;
   if (ginfo->add_m3u) 

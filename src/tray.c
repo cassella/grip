@@ -51,8 +51,8 @@ static gboolean TrayIconButtonPress(GtkWidget *widget, GdkEventButton *event, gp
 void UpdateTray(GripInfo *ginfo)
 {
 	gchar *text, *riptext = NULL, *enctext = NULL;
-	gchar *artist = strcmp(ginfo->ddata.data_artist, "") ? ginfo->ddata.data_artist : _("Artist");
-	gchar *title = strcmp(ginfo->ddata.data_title, "") ? ginfo->ddata.data_title : _("Title");
+	gchar *artist = strcmp(ginfo->Disc.instance->data.artist, "") ? ginfo->Disc.instance->data.artist : _("Artist");
+	gchar *title = strcmp(ginfo->Disc.instance->data.title, "") ? ginfo->Disc.instance->data.title : _("Title");
 	GripGUI *uinfo = &(ginfo->gui_info);
 	
 	int tmin, tsec, emin, esec;
@@ -73,11 +73,11 @@ void UpdateTray(GripInfo *ginfo)
 	if (ginfo->show_tray_icon) {
 		if (ginfo->playing) {
 			TrayUnGrayMenu(ginfo);
-			tmin = ginfo->disc.track[ginfo->current_track_index].length.mins;
-			tsec = ginfo->disc.track[ginfo->current_track_index].length.secs;
-			emin = ginfo->disc.track_time.mins;
-			esec = ginfo->disc.track_time.secs;
-			text = g_strdup_printf(_("%s - %s\n%02d:%02d of %02d:%02d"), artist, ginfo->ddata.data_track[ginfo->current_track_index].track_name, emin, esec, tmin, tsec);
+			tmin = ginfo->Disc.instance->info.tracks[ginfo->current_track_index].length.mins;
+			tsec = ginfo->Disc.instance->info.tracks[ginfo->current_track_index].length.secs;
+			emin = ginfo->Disc.info.track_time.mins;
+			esec = ginfo->Disc.info.track_time.secs;
+			text = g_strdup_printf(_("%s - %s\n%02d:%02d of %02d:%02d"), artist, ginfo->Disc.instance->data.tracks[ginfo->current_track_index].track_name, emin, esec, tmin, tsec);
 		} else if (!ginfo->playing) {
 			if (ginfo->ripping || ginfo->encoding) {
 				TrayGrayMenu(ginfo);
@@ -301,7 +301,7 @@ static void RipEncCB(GtkWidget *widget, gpointer data)
 	GripInfo *ginfo = (GripInfo*)data;
 	
 	/* this gets rid of the annoying 'Rip Whole CD?' dialog box */
-	for (i = 0; i < ginfo->disc.num_tracks; i++)
+	for (i = 0; i < ginfo->Disc.instance->info.num_tracks; i++)
 		SetChecked(&(ginfo->gui_info), i, TRUE);
 		
 	DoRip(NULL, data);

@@ -32,6 +32,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <config.h>
+#include "grip.h"
 #include "cddev.h"
 #include "common.h"
 
@@ -129,8 +130,11 @@ gboolean CDCloseDevice(DiscInfo *disc)
 
 /* Update a CD status structure... because operating system interfaces vary
    so does this function. */
-gboolean CDStat(DiscInfo *disc,gboolean read_toc)
+gboolean CDStat(Disc *disc, gboolean read_toc)
 {
+  DiscInfo *info = &disc->info;
+  DiscInfoInstance *pins = &disc->p_instance.info;
+  DiscInfoInstance *ins  = &disc->instance->info;
   /* Since every platform does this a little bit differently this gets pretty
      complicated... */
 #ifdef CDIOREADSUBCHANNEL
@@ -161,23 +165,24 @@ gboolean CDStat(DiscInfo *disc,gboolean read_toc)
 #endif
 
   int readtracks,frame[MAX_TRACKS],pos;
+  int i;
 
-  if (disc->cd_desc < 0) {
-    CDInitDevice(disc->devname, disc);
-  }
-  if (disc->cd_desc < 0) {
-    return FALSE;
+  if (info->cd_desc < 0) {
+    CDInitDevice(info->devname, info);
+	if (info->cd_desc < 0) {
+	  return FALSE;
+	}
   }
 
 #ifdef CDROM_DRIVE_STATUS
-  retcode=ioctl(disc->cd_desc,CDROM_DRIVE_STATUS,CDSL_CURRENT);
+  retcode = ioctl(info->cd_desc, CDROM_DRIVE_STATUS, CDSL_CURRENT);
   Debug(_("Drive status is %d\n"),retcode);
   if(retcode < 0) {
     Debug(_("Drive doesn't support drive status check (assume CDS_NO_INFO)\n"));
   }
   else if(retcode != CDS_DISC_OK && retcode != CDS_NO_INFO) {
     Debug(_("No disc\n"));
-    disc->disc_present=FALSE;
+    info->disc_present = FALSE;
 
     return FALSE;
   }
@@ -191,22 +196,22 @@ gboolean CDStat(DiscInfo *disc,gboolean read_toc)
   cdsc.data_format=CD_CURRENT_POSITION;
   cdsc.address_format=CD_MSF_FORMAT;
    
-  if(ioctl(disc->cd_desc,CDIOCREADSUBCHANNEL,(char *)&cdsc)<0)
+  if (ioctl(info->cd_desc, CDIOCREADSUBCHANNEL, (char *)&cdsc) < 0)
 #endif
 #ifdef CDROM_READ_SUBCHANNEL
     sch.sch_data_format=CDROM_CURRENT_POSITION;
   
   sch.sch_address_format=CDROM_MSF_FORMAT;
   
-  if(ioctl(disc->cd_desc,CDROM_READ_SUBCHANNEL, &sch)<0)
+  if (ioctl(info->cd_desc, CDROM_READ_SUBCHANNEL, &sch) < 0)
 #endif
 #ifdef CDROMSUBCHNL
     cdsc.cdsc_format=CDROM_MSF;
   
-  if(ioctl(disc->cd_desc,CDROMSUBCHNL,&cdsc)<0)
+  if (ioctl(info->cd_desc, CDROMSUBCHNL, &cdsc) < 0)
 #endif
     {
-      disc->disc_present=FALSE;
+      info->disc_present = FALSE;
       
       return FALSE;
     }
@@ -214,61 +219,61 @@ gboolean CDStat(DiscInfo *disc,gboolean read_toc)
 #ifdef CDROMSUBCHNL
   if(cdsc.cdsc_audiostatus&&
      (cdsc.cdsc_audiostatus<0x11||cdsc.cdsc_audiostatus>0x15)) {
-    disc->disc_present=FALSE;
+    info->disc_present = FALSE;
 
     return FALSE;
   }
 #endif
 
-  disc->disc_present=TRUE;
+  info->disc_present = TRUE;
 
 #ifdef CDIOREADSUBCHANNEL
 
-  disc->disc_time.mins=data.what.position.absaddr.msf.minute;
-  disc->disc_time.secs=data.what.position.absaddr.msf.second;   
-  disc->curr_frame=(data.what.position.absaddr.msf.minute * 60 +
+  info->disc_time.mins=data.what.position.absaddr.msf.minute;
+  info->disc_time.secs=data.what.position.absaddr.msf.second;   
+  info->curr_frame=(data.what.position.absaddr.msf.minute * 60 +
 		    data.what.position.absaddr.msf.second) * 75 +
     data.what.position.absaddr.msf.frame;
    
   switch(data.header.audio_status) {
   case CD_AS_AUDIO_INVALID:
-    disc->disc_mode=CDAUDIO_NOSTATUS;
+    info->disc_mode = CDAUDIO_NOSTATUS;
     break;
   case CD_AS_PLAY_IN_PROGRESS:
-    disc->disc_mode=CDAUDIO_PLAYING;
+    info->disc_mode = CDAUDIO_PLAYING;
     break;
   case CD_AS_PLAY_PAUSED:
-    disc->disc_mode=CDAUDIO_PAUSED;
+    info->disc_mode = CDAUDIO_PAUSED;
     break;
   case CD_AS_PLAY_COMPLETED:
-    disc->disc_mode=CDAUDIO_COMPLETED;
+    info->disc_mode = CDAUDIO_COMPLETED;
     break;
   case CD_AS_PLAY_ERROR:
-    disc->disc_mode=CDAUDIO_NOSTATUS;
+    info->disc_mode = CDAUDIO_NOSTATUS;
     break;
   case CD_AS_NO_STATUS:
-    disc->disc_mode=CDAUDIO_NOSTATUS;
+    info->disc_mode = CDAUDIO_NOSTATUS;
   }
 #endif
 #ifdef CDROMSUBCHNL
-  disc->disc_time.mins=cdsc.cdsc_absaddr.msf.minute;
-  disc->disc_time.secs=cdsc.cdsc_absaddr.msf.second;
-  disc->curr_frame=(cdsc.cdsc_absaddr.msf.minute * 60 +
+  info->disc_time.mins=cdsc.cdsc_absaddr.msf.minute;
+  info->disc_time.secs=cdsc.cdsc_absaddr.msf.second;
+  info->curr_frame=(cdsc.cdsc_absaddr.msf.minute * 60 +
 		    cdsc.cdsc_absaddr.msf.second) * 75 +
     cdsc.cdsc_absaddr.msf.frame;
 
   switch(cdsc.cdsc_audiostatus) {
   case CDROM_AUDIO_PLAY:
-    disc->disc_mode=CDAUDIO_PLAYING;
+    info->disc_mode = CDAUDIO_PLAYING;
     break;
   case CDROM_AUDIO_PAUSED:
-    disc->disc_mode=CDAUDIO_PAUSED;
+    info->disc_mode = CDAUDIO_PAUSED;
     break;
   case CDROM_AUDIO_NO_STATUS:
-    disc->disc_mode=CDAUDIO_NOSTATUS;
+    info->disc_mode = CDAUDIO_NOSTATUS;
     break;
   case CDROM_AUDIO_COMPLETED:
-    disc->disc_mode=CDAUDIO_COMPLETED;
+    info->disc_mode = CDAUDIO_COMPLETED;
     break;
   }
 #endif
@@ -276,23 +281,30 @@ gboolean CDStat(DiscInfo *disc,gboolean read_toc)
   if(read_toc) {
     /* Read the Table Of Contents header */
 
+	if (!disc->instance) {
+		disc->instance = &disc->p_instance;
+		ins = pins;
+	} else {
+		g_assert(disc->instance == &disc->p_instance);
+	}
+
 #ifdef CDIOREADTOCHEADER
-    if(ioctl(disc->cd_desc,CDIOREADTOCHEADER,(char *)&cdth)<0) {
+    if (ioctl(info->cd_desc, CDIOREADTOCHEADER, (char *)&cdth) < 0) {
       g_print(_("Error: Failed to read disc contents\n"));
       
       return FALSE;
     }
     
-    disc->num_tracks=cdth.ending_track;
+    pins->num_tracks = cdth.ending_track;
 #endif
 #ifdef CDROMREADTOCHDR
-    if(ioctl(disc->cd_desc,CDROMREADTOCHDR,&cdth)<0) {
+    if(ioctl(info->cd_desc, CDROMREADTOCHDR, &cdth) < 0) {
       g_print(_("Error: Failed to read disc contents\n"));
 
       return FALSE;
     }
     
-    disc->num_tracks=cdth.cdth_trk1;
+    pins->num_tracks = cdth.cdth_trk1;
 #endif
     
     /* Read the table of contents */
@@ -303,96 +315,141 @@ gboolean CDStat(DiscInfo *disc,gboolean read_toc)
     cdte.data=toc_buffer;
     cdte.data_len=sizeof(toc_buffer);
     
-    if(ioctl(disc->cd_desc,CDIOREADTOCENTRYS,(char *)&cdte)<0) {
+    if (ioctl(info->cd_desc, CDIOREADTOCENTRYS, (char *)&cdte) < 0) {
       g_print(_("Error: Failed to read disc contents\n"));
 
       return FALSE;
     }
     
-    for(readtracks=0;readtracks<=disc->num_tracks;readtracks++) {
-      disc->track[readtracks].start_pos.mins=
+    for(readtracks = 0; readtracks <= pins->num_tracks; readtracks++) {
+      pins->tracks[readtracks].start_pos.mins =
 	cdte.data[readtracks].addr.msf.minute;
-      disc->track[readtracks].start_pos.secs=
+      pins->tracks[readtracks].start_pos.secs =
 	cdte.data[readtracks].addr.msf.second;
       frame[readtracks]=cdte.data[readtracks].addr.msf.frame;
 
       /* I'm just guessing about this based on cdio.h -- should be tested */
       /* This compiles on freebsd, does it work? */
-      disc->track[readtracks].flags=(cdte.data[readtracks].addr_type << 4) |
+      pins->tracks[readtracks].flags = (cdte.data[readtracks].addr_type << 4) |
 	(cdte.data[readtracks].control & 0x0f);
     }
 #endif
 #ifdef CDROMREADTOCENTRY
-    for(readtracks=0;readtracks<=disc->num_tracks;readtracks++) {
-      if(readtracks==disc->num_tracks)	
+    for(readtracks=0; readtracks <= pins->num_tracks; readtracks++) {
+      if(readtracks == pins->num_tracks)	
 	cdte.cdte_track=CDROM_LEADOUT;
       else
 	cdte.cdte_track=readtracks+1;
       
       cdte.cdte_format=CDROM_MSF;
-      if(ioctl(disc->cd_desc,CDROMREADTOCENTRY,&cdte) < 0) {
+      if (ioctl(info->cd_desc, CDROMREADTOCENTRY, &cdte) < 0) {
 	g_print(_("Error: Failed to read disc contents\n"));
 
 	return FALSE;
       }
       
-      disc->track[readtracks].start_pos.mins=cdte.cdte_addr.msf.minute;
-      disc->track[readtracks].start_pos.secs=cdte.cdte_addr.msf.second;
+      pins->tracks[readtracks].start_pos.mins = cdte.cdte_addr.msf.minute;
+      pins->tracks[readtracks].start_pos.secs = cdte.cdte_addr.msf.second;
       frame[readtracks]=cdte.cdte_addr.msf.frame;
       
-      disc->track[readtracks].flags=(cdte.cdte_adr << 4) |
+      pins->tracks[readtracks].flags = (cdte.cdte_adr << 4) |
 	(cdte.cdte_ctrl & 0x0f);
     }
 #endif
     
-    for(readtracks=0;readtracks<=disc->num_tracks;readtracks++) {
-      disc->track[readtracks].start_frame=
-	(disc->track[readtracks].start_pos.mins * 60 +
-	 disc->track[readtracks].start_pos.secs) * 75 + frame[readtracks];
+    for(readtracks = 0; readtracks <= pins->num_tracks; readtracks++) {
+      pins->tracks[readtracks].start_frame =
+	(pins->tracks[readtracks].start_pos.mins * 60 +
+	 pins->tracks[readtracks].start_pos.secs) * 75 + frame[readtracks];
       
       if(readtracks>0) {
-	pos=(disc->track[readtracks].start_pos.mins * 60 +
-	     disc->track[readtracks].start_pos.secs) -
-	  (disc->track[readtracks-1].start_pos.mins * 60 +
-	   disc->track[readtracks -1].start_pos.secs);
+	pos = (pins->tracks[readtracks].start_pos.mins * 60 +
+	       pins->tracks[readtracks].start_pos.secs) -
+	  (pins->tracks[readtracks - 1].start_pos.mins * 60 +
+	   pins->tracks[readtracks - 1].start_pos.secs);
 
 	/* Compensate for the gap before a data track */
-	if((readtracks<disc->num_tracks&&
-	    IsDataTrack(disc,readtracks)&&
+	if((readtracks<pins->num_tracks&&
+	    IsDataTrack(disc, readtracks)&&
 	    pos>152)) {
 	  pos-=152;
 	}
 
-	disc->track[readtracks - 1].length.mins=pos / 60;
-	disc->track[readtracks - 1].length.secs=pos % 60;
+	/* Fill in the previous track's length based on this track's
+	 * beginning. */
+	pins->tracks[readtracks - 1].length.mins=pos / 60;
+	pins->tracks[readtracks - 1].length.secs=pos % 60;
+
+	pins->tracks[readtracks - 1].num_frames = pos * 75 + frame[readtracks] - frame[readtracks - 1];
       }
     }
     
-    disc->length.mins=
-      disc->track[disc->num_tracks].start_pos.mins;
+    info->length.mins =
+      pins->tracks[pins->num_tracks].start_pos.mins;
     
-    disc->length.secs=
-      disc->track[disc->num_tracks].start_pos.secs;
+    info->length.secs =
+      pins->tracks[pins->num_tracks].start_pos.secs;
   }
-   
-  disc->curr_track=0;
 
-  while(disc->curr_track<disc->num_tracks &&
-	disc->curr_frame>=disc->track[disc->curr_track].start_frame)
-    disc->curr_track++;
 
-  pos=(disc->curr_frame-disc->track[disc->curr_track-1].start_frame) / 75;
+/* XXX
+ *
+ * With this vtrackinfofile, after track 12 has finished, but before we've
+ * started track 13, curr_frame can be 229230, almost 500 frames after it
+ * should have stopped.  The drive has stopped playing, so
+ * CDAUDIO_NOSTATUS, but this loop leaves curr_track 13, and
+ * UpdateDisplay() will think we've finished track 13, so it will skip to
+ * the next track.
+ *
 
-  disc->track_time.mins=pos/60;
-  disc->track_time.secs=pos%60;
+(b30c1b0d.vtrackinfo)
 
+VTITLE12=Spaceman
+VFRAMES12=PTRACK12-228763
+VTITLE13=Bye
+VFRAMES13=229214-PTRACK12
+
+ *
+ */
+
+  /* This loop finds the first track whose start is after the current
+   * position.  Since curr_track is 1-based, and track[] is 0-based, this
+   * number is the current track.  This depends on the extra track with a
+   * start_frame of the end of the real last track. */
+  for(i = 0; i < ins->num_tracks && info->curr_frame >= ins->tracks[i].start_frame; i++)
+	;
+
+  /* Sometimes curr_frame will be before the beginning of the first
+   * frame. */
+  if(i == 0) {
+	info->curr_frame = ins->tracks[0].start_frame;
+	i = 1;
+  }
+
+  info->curr_track = i;
+
+  pos = (info->curr_frame - ins->tracks[i - 1].start_frame) / 75;
+
+  info->track_time.mins = pos / 60;
+  info->track_time.secs = pos % 60;
+
+  info->have_info = TRUE;
   return TRUE;
 }
 
 /* Check if a track is a data track */
-gboolean IsDataTrack(DiscInfo *disc,int track)
+gboolean IsDataTrack(Disc *disc, int track)
 {
-  return(disc->track[track].flags & 4);
+  DiscInfoInstance *pins = &disc->p_instance.info;
+  DiscInfoInstance *ins  = &disc->instance->info;
+  int start_frame;
+
+  if (disc->instance == &disc->p_instance)
+	return(pins->tracks[track].flags & 4);
+
+  start_frame = ins->tracks[track].start_frame;
+
+  return pins->tracks[frame_to_ptrack(disc, start_frame)].flags & 4;
 }
 
 /* Play frames from CD */
@@ -404,6 +461,8 @@ gboolean CDPlayFrames(DiscInfo *disc,int startframe,int endframe)
 #ifdef CDROMPLAYMSF
   struct cdrom_msf cdmsf;
 #endif
+
+printf("playing frames %d through %d\n", startframe, endframe);
 
   if (disc->cd_desc < 0) {
     return FALSE;
@@ -447,30 +506,42 @@ gboolean CDPlayFrames(DiscInfo *disc,int startframe,int endframe)
 }
 
 /* Play starttrack at position pos to endtrack */
-gboolean CDPlayTrackPos(DiscInfo *disc,int starttrack,
+gboolean CDPlayTrackPos(Disc *Disc, int starttrack,
 			int endtrack,int startpos)
 {
-  if (disc->cd_desc < 0) {
-    return FALSE;
-  }
+  DiscInfo *disc = &Disc->info;
+  DiscInfoInstance *ins = &Disc->instance->info;
+  int last_play_track;
+  long end_frame;
 
-  return CDPlayFrames(disc,disc->track[starttrack-1].start_frame +
-		      startpos * 75,endtrack>=disc->num_tracks ?
-		      (disc->length.mins * 60 +
-		       disc->length.secs) * 75 :
-		      disc->track[endtrack].start_frame - 1);
+  g_assert(disc->cd_desc);
+  g_assert(endtrack <= ins->num_tracks);
+
+  last_play_track = endtrack - 1;
+  end_frame =   ins->tracks[last_play_track].start_frame 
+	          + ins->tracks[last_play_track].num_frames;
+
+  return CDPlayFrames(disc, ins->tracks[starttrack - 1].start_frame +
+					  startpos * 75, end_frame);
+
 }
 
 /* Play starttrack to endtrack */
-gboolean CDPlayTrack(DiscInfo *disc,int starttrack,int endtrack)
+gboolean CDPlayTrack(Disc *disc, int starttrack, int endtrack)
 {
   return CDPlayTrackPos(disc,starttrack,endtrack,0);
 }
 
 /* Advance (fastfwd) */
 
-gboolean CDAdvance(DiscInfo *disc,DiscTime *time)
+extern long last_contiguous_track(Disc *Disc, int track);
+
+gboolean CDAdvance(Disc *Disc, DiscTime *time)
 {
+  DiscInfo *disc = &Disc->info;
+  DiscInfoInstance *ins = &Disc->instance->info;
+  TrackInfo *track = &ins->tracks[disc->curr_track - 1];
+
   if (disc->cd_desc < 0) {
     return FALSE;
   }
@@ -492,40 +563,47 @@ gboolean CDAdvance(DiscInfo *disc,DiscTime *time)
       the last track - DCV */
   if(disc->track_time.mins < 0) {
     disc->curr_track--;
+    track--;
     
     /*  Tried to skip past first track so go to the beginning  */
     if(disc->curr_track == 0) {
       disc->curr_track = 1;
-      return CDPlayTrack(disc,disc->curr_track,disc->curr_track);
+      return CDPlayTrack(Disc, disc->curr_track, disc->curr_track);
     }
     
     /*  Go to the end of the last track  */
-    disc->track_time.mins=disc->track[(disc->curr_track)-1].
-      length.mins;
-    disc->track_time.secs=disc->track[(disc->curr_track)-1].
-      length.secs;
+    disc->track_time.mins = track->length.mins;
+    disc->track_time.secs = track->length.secs;
 
     /*  Try again  */
-    return CDAdvance(disc,time);
+    return CDAdvance(Disc, time);
   }
-   
-  if((disc->track_time.mins ==
-      disc->track[disc->curr_track].start_pos.mins &&
-      disc->track_time.secs >
-      disc->track[disc->curr_track].start_pos.secs)
-     || disc->track_time.mins>
-     disc->track[disc->curr_track].start_pos.mins) {
-    disc->curr_track++;
 
-    if(disc->curr_track>disc->num_tracks)
-      disc->curr_track=disc->num_tracks;
-      
-    return CDPlayTrack(disc,disc->curr_track,disc->curr_track);
+  /* If we moved past the end of this track, go to the next track */
+  if((disc->track_time.mins == track->length.mins &&
+      disc->track_time.secs > track->length.secs)
+     || disc->track_time.mins > track->length.mins) {
+
+	  /* Note, we may have skipped completely over a track */
+	  do {
+		  disc->curr_track++;
+		  track++;
+	  } while(disc->curr_track <= ins->num_tracks && (
+		      (disc->track_time.mins == track->length.mins &&
+		       disc->track_time.secs > track->length.secs)
+		      || disc->track_time.mins > track->length.mins));
+
+	  /* If we moved past the end of the last track, replay the last
+	   * track? */
+	  if(disc->curr_track > ins->num_tracks)
+		  disc->curr_track = ins->num_tracks;
+
+	  return CDPlayTrack(Disc, disc->curr_track, disc->curr_track);
   }
    
-  return CDPlayTrackPos(disc,disc->curr_track,disc->curr_track,
-			disc->track_time.mins * 60 +
-			disc->track_time.secs);
+  return CDPlayTrackPos(Disc, disc->curr_track,
+			last_contiguous_track(Disc, disc->curr_track - 1) + 1,
+			disc->track_time.mins * 60 + disc->track_time.secs);
 }
 
 /* Stop the CD, if it is playing */
@@ -782,4 +860,45 @@ int CDChangerSlots(DiscInfo *disc)
 #else
   return 1;
 #endif
+}
+
+
+int frame_to_ptrack(Disc *disc, long frame) {
+  DiscInfoInstance *pins = &disc->p_instance.info;
+  int i;
+
+/*   printf("frame_to_ptrack of frame %ld\n", frame); */
+
+  /*
+   * Stuff before the first track.  Ie., TMBG's Factory Showroom.
+   *
+   * It really is the first track; the TOC just says it starts later than
+   * it really does.
+   */
+  if (frame < pins->tracks[0].start_frame)
+	return 0;
+
+  for (i = 0; i < pins->num_tracks; i++) {
+	TrackInfo *track = &pins->tracks[i];
+/* 	printf("checking track %d, start %d, num %d\n", i, track->start_frame, track->num_frames); */
+	if (track->start_frame <= frame &&
+		track->start_frame + track->num_frames > frame)
+	  return i;
+  }
+  g_error("frame_to_ptrack: invalid frame %ld", frame);
+  return -1;
+}
+
+int track_start_to_ptrack(Disc *disc, int track) {
+  if (disc->instance == &disc->p_instance)
+	return track;
+
+  return frame_to_ptrack(disc, disc->instance->info.tracks[track].start_frame);
+}
+
+int track_end_to_ptrack(Disc *disc, int track) {
+  DiscInfoInstance *ins = &disc->instance->info;
+  if (disc->instance == &disc->p_instance)
+	return track;
+  return frame_to_ptrack(disc, ins->tracks[track].start_frame + ins->tracks[track].num_frames);
 }
