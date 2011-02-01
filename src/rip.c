@@ -1422,15 +1422,15 @@ static gboolean RipNextTrack(GripInfo *ginfo)
     if(!ginfo->rip_partial) {
       ginfo->start_sector=0;
       ginfo->end_sector = ins->tracks[ginfo->rip_track].num_frames - 1;
-
-	  /* Compensate for the gap before a data track.
-	   * If it's a virtual track, assume this is unnecessary. */
-	  if (ginfo->Disc.instance == &ginfo->Disc.p_instance) {
-		if ((ginfo->rip_track< ins->num_tracks - 1 &&
-			IsDataTrack(&ginfo->Disc, ginfo->rip_track + 1) &&
-			(ginfo->end_sector-ginfo->start_sector)>11399))
-		  ginfo->end_sector-=11400;
-	  }
+      /*
+       * vanilla compensates for the gap before the data track here It
+       * gets end_sector from (next_track.start_frame -
+       * this_track.start_frame).  If the "next track" is the data
+       * track, its start_frame is artificially high.
+       *
+       * We've already applied this compensation in computing
+       * num_frames, so we can just do the obvious thing.
+       */
     }
 
     ginfo->ripsize=44+((ginfo->end_sector-ginfo->start_sector)+1)*2352;
