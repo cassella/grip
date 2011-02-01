@@ -401,26 +401,6 @@ gboolean CDStat(Disc *disc, gboolean read_toc)
             pins->tracks[pins->num_tracks].start_pos.secs;
     }
 
-/* XXX
- *
- * With this vtrackinfofile, after track 12 has finished, but before we've
- * started track 13, curr_frame can be 229230, almost 500 frames after it
- * should have stopped.  The drive has stopped playing, so
- * CDAUDIO_NOSTATUS, but this loop leaves curr_track 13, and
- * UpdateDisplay() will think we've finished track 13, so it will skip to
- * the next track.
- *
-
-(b30c1b0d.vtrackinfo)
-
-VTITLE12=Spaceman
-VFRAMES12=PTRACK12-228763
-VTITLE13=Bye
-VFRAMES13=229214-PTRACK12
-
- *
- */
-
     /* This loop finds the first track whose start is after the current
      * position.  Since curr_track is 1-based, and track[] is 0-based, this
      * number is the current track.  This depends on the extra track with a
