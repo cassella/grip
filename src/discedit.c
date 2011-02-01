@@ -491,7 +491,7 @@ GtkWidget *MakeEditBox(GripInfo *ginfo)
   gtk_box_pack_start(GTK_BOX(vtbox), vthbox, FALSE, FALSE, 0);
   gtk_widget_show(vthbox);
 
-  adj = gtk_adjustment_new(1, 5, 100, 1, 1, 1);
+  adj = gtk_adjustment_new(1, 5, 100, 1, 1, 0);
 
   button = gtk_spin_button_new(GTK_ADJUSTMENT(adj), 1, 0);
   gtk_box_pack_start(GTK_BOX(vthbox), button, FALSE, FALSE, 0);
@@ -523,7 +523,8 @@ GtkWidget *MakeEditBox(GripInfo *ginfo)
   gtk_box_pack_start(GTK_BOX(vthbox), label, FALSE, TRUE, 0);
   gtk_widget_show(label);
 
-  adj = gtk_adjustment_new(1, 1, 1000, 1, 1, 1);
+  adj = gtk_adjustment_new(1, 1, 1000, 1, 1, 0);
+
   button = gtk_spin_button_new(GTK_ADJUSTMENT(adj), 1, 0);
   gtk_box_pack_start(GTK_BOX(vthbox), button, FALSE, FALSE, 0);
   uinfo->set_vtracknum_spin_button = button;
