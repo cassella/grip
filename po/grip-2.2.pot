@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2011-02-03 01:56-0800\n"
+"POT-Creation-Date: 2011-02-05 23:24-0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -65,102 +65,102 @@ msgstr ""
 msgid "Grip"
 msgstr ""
 
-#: src/grip.c:222
+#: src/grip.c:224
 #, c-format
 msgid "Error: Unable to initialize [%s]\n"
 msgstr ""
 
-#: src/grip.c:307
+#: src/grip.c:311
 msgid ""
 "This is a development version of Grip. If you encounter problems, you are "
 "encouraged to revert to the latest stable version."
 msgstr ""
 
-#: src/grip.c:320
+#: src/grip.c:324
 msgid "Grip started successfully\n"
 msgstr ""
 
-#: src/grip.c:334
+#: src/grip.c:338
 msgid ""
 "Work is in progress.\n"
 "Really shut down?"
 msgstr ""
 
-#: src/grip.c:385
+#: src/grip.c:389
 msgid "Status"
 msgstr ""
 
-#: src/grip.c:400
+#: src/grip.c:404
 msgid "General"
 msgstr ""
 
-#: src/grip.c:415 src/gripcfg.c:363 src/cdplay.c:251 src/cdplay.c:344
+#: src/grip.c:419 src/gripcfg.c:363 src/cdplay.c:344 src/cdplay.c:442
 #: src/rip.c:95
 msgid "Rip"
 msgstr ""
 
-#: src/grip.c:430 src/gripcfg.c:497
+#: src/grip.c:434 src/gripcfg.c:497
 msgid "Encode"
 msgstr ""
 
-#: src/grip.c:475
+#: src/grip.c:479
 msgid "Help"
 msgstr ""
 
-#: src/grip.c:480
+#: src/grip.c:484
 msgid "Table Of Contents"
 msgstr ""
 
-#: src/grip.c:486
+#: src/grip.c:490
 msgid "Playing CDs"
 msgstr ""
 
-#: src/grip.c:492
+#: src/grip.c:496
 msgid "Ripping CDs"
 msgstr ""
 
-#: src/grip.c:498
+#: src/grip.c:502
 msgid "Configuring Grip"
 msgstr ""
 
-#: src/grip.c:504
+#: src/grip.c:508
 msgid "FAQ"
 msgstr ""
 
-#: src/grip.c:510
+#: src/grip.c:514
 msgid "Getting More Help"
 msgstr ""
 
-#: src/grip.c:516
+#: src/grip.c:520
 msgid "Reporting Bugs"
 msgstr ""
 
-#: src/grip.c:536
+#: src/grip.c:540
 msgid "About"
 msgstr ""
 
-#: src/grip.c:555
+#: src/grip.c:559
 #, c-format
 msgid "Version %s"
 msgstr ""
 
-#: src/grip.c:930
+#: src/grip.c:958
 msgid "Created by Grip"
 msgstr ""
 
-#: src/grip.c:947
+#: src/grip.c:975
 msgid ""
 "Your config file is out of date -- resetting to defaults.\n"
 "You will need to re-configure Grip.\n"
 "Your old config file has been saved with -old appended."
 msgstr ""
 
-#: src/grip.c:1020
+#: src/grip.c:1048
 #, c-format
 msgid "server is %s, port %d\n"
 msgstr ""
 
-#: src/grip.c:1041
+#: src/grip.c:1069
 msgid "Error: Unable to save config file."
 msgstr ""
 
@@ -506,220 +506,217 @@ msgstr ""
 msgid "Error: Unable to save encoder config."
 msgstr ""
 
-#: src/cddev.c:185 src/cddev.c:615
+#: src/cddev.c:190 src/cddev.c:673
 #, c-format
 msgid "Drive status is %d\n"
 msgstr ""
 
-#: src/cddev.c:187
+#: src/cddev.c:192
 msgid "Drive doesn't support drive status check (assume CDS_NO_INFO)\n"
 msgstr ""
 
-#: src/cddev.c:190
+#: src/cddev.c:195
 msgid "No disc\n"
 msgstr ""
 
-#: src/cddev.c:292 src/cddev.c:301 src/cddev.c:318 src/cddev.c:345
+#: src/cddev.c:303 src/cddev.c:312 src/cddev.c:329 src/cddev.c:356
 msgid "Error: Failed to read disc contents\n"
 msgstr ""
 
-#: src/cddev.c:618
+#: src/cddev.c:676
 msgid "Drive doesn't support drive status check\n"
 msgstr ""
 
-#: src/cdplay.c:83
+#: src/cdplay.c:91
 msgid "Cannot do lookup while ripping."
 msgstr ""
 
 #. "misc"
-#: src/cdplay.c:120
+#: src/cdplay.c:134
 msgid "Unknown Disc"
 msgstr ""
 
-#: src/cdplay.c:124
+#: src/cdplay.c:138
 #, c-format
 msgid "Track %02d"
 msgstr ""
 
-#: src/cdplay.c:184
+#: src/cdplay.c:202
 #, c-format
 msgid "Querying %s (through %s) for disc %02x.\n"
 msgstr ""
 
-#: src/cdplay.c:189
+#: src/cdplay.c:207
 #, c-format
 msgid "Querying %s for disc %02x.\n"
 msgstr ""
 
-#: src/cdplay.c:206
+#: src/cdplay.c:238
 #, c-format
 msgid ""
 "Match for \"%s / %s\"\n"
 "Downloading data...\n"
 msgstr ""
 
-#: src/cdplay.c:214
+#: src/cdplay.c:246
 msgid "Done\n"
 msgstr ""
 
-#: src/cdplay.c:218
+#: src/cdplay.c:250 src/cdplay.c:842
 msgid "Error saving disc data\n"
 msgstr ""
 
-#: src/cdplay.c:224
+#: src/cdplay.c:256
 msgid "No match\n"
 msgstr ""
 
-#: src/cdplay.c:242 src/cdplay.c:333
+#: src/cdplay.c:335 src/cdplay.c:431
 msgid "Length"
 msgstr ""
 
-#: src/cdplay.c:298
-msgid "Tracks"
-msgstr ""
-
-#: src/cdplay.c:322
+#: src/cdplay.c:420
 msgid "Track"
 msgstr ""
 
-#: src/cdplay.c:631 src/discedit.c:390
-msgid "Error saving disc data."
+#: src/cdplay.c:719
+#, c-format
+msgid "Column/Button: %d/%d\n"
 msgstr ""
 
-#: src/cdplay.c:702
+#: src/cdplay.c:913
 msgid "Rotate play mode"
 msgstr ""
 
-#: src/cdplay.c:722
+#: src/cdplay.c:933
 msgid "Toggle loop play"
 msgstr ""
 
-#: src/cdplay.c:800 src/rip.c:230
+#: src/cdplay.c:1011 src/rip.c:230
 msgid "Rip status"
 msgstr ""
 
-#: src/cdplay.c:867
+#: src/cdplay.c:1078
 msgid "Play track / Pause play"
 msgstr ""
 
-#: src/cdplay.c:878
+#: src/cdplay.c:1089
 msgid "Rewind"
 msgstr ""
 
-#: src/cdplay.c:889
+#: src/cdplay.c:1100
 msgid "FastForward"
 msgstr ""
 
-#: src/cdplay.c:899
+#: src/cdplay.c:1110
 msgid "Go to previous track"
 msgstr ""
 
-#: src/cdplay.c:908
+#: src/cdplay.c:1119
 msgid "Go to next track"
 msgstr ""
 
-#: src/cdplay.c:917
+#: src/cdplay.c:1128
 msgid "Toggle play mode options"
 msgstr ""
 
-#: src/cdplay.c:927
+#: src/cdplay.c:1138
 msgid "Next Disc"
 msgstr ""
 
-#: src/cdplay.c:941
+#: src/cdplay.c:1152
 msgid "Stop play"
 msgstr ""
 
-#: src/cdplay.c:951
+#: src/cdplay.c:1162
 msgid "Eject disc"
 msgstr ""
 
-#: src/cdplay.c:960
+#: src/cdplay.c:1171
 msgid "Scan Disc Contents"
 msgstr ""
 
-#: src/cdplay.c:968
+#: src/cdplay.c:1179
 msgid "Toggle Volume Control"
 msgstr ""
 
-#: src/cdplay.c:977
+#: src/cdplay.c:1188
 msgid "Toggle disc editor"
 msgstr ""
 
-#: src/cdplay.c:987
+#: src/cdplay.c:1198
 msgid "Initiate/abort DiscDB lookup"
 msgstr ""
 
-#: src/cdplay.c:997
+#: src/cdplay.c:1208
 msgid "Toggle track display"
 msgstr ""
 
-#: src/cdplay.c:1004
+#: src/cdplay.c:1215
 msgid "Exit Grip"
 msgstr ""
 
-#: src/cdplay.c:1171
+#: src/cdplay.c:1382
 msgid "Cannot fast forward while ripping."
 msgstr ""
 
-#: src/cdplay.c:1202
+#: src/cdplay.c:1415
 msgid "Cannot rewind while ripping."
 msgstr ""
 
-#: src/cdplay.c:1233
+#: src/cdplay.c:1453
 msgid "Cannot switch discs while ripping."
 msgstr ""
 
-#: src/cdplay.c:1251
+#: src/cdplay.c:1476
 msgid "Eject disc\n"
 msgstr ""
 
-#: src/cdplay.c:1255
+#: src/cdplay.c:1480
 msgid "Cannot eject while ripping."
 msgstr ""
 
-#: src/cdplay.c:1265
+#: src/cdplay.c:1494
 msgid "Have disc -- ejecting\n"
 msgstr ""
 
-#: src/cdplay.c:1332
+#: src/cdplay.c:1565
 msgid "Cannot play while ripping."
 msgstr ""
 
-#: src/cdplay.c:1400 src/cdplay.c:1431
+#: src/cdplay.c:1656 src/cdplay.c:1688
 msgid "Cannot switch tracks while ripping."
 msgstr ""
 
-#: src/cdplay.c:1522
+#: src/cdplay.c:1782
 msgid "Checking for a new disc\n"
 msgstr ""
 
-#: src/cdplay.c:1527
+#: src/cdplay.c:1787
 msgid "CDStat found a disc, checking tracks\n"
 msgstr ""
 
-#: src/cdplay.c:1530
+#: src/cdplay.c:1790
 msgid "We have a valid disc!\n"
 msgstr ""
 
-#: src/cdplay.c:1557
+#: src/cdplay.c:1818
 msgid "No non-zero length tracks\n"
 msgstr ""
 
-#: src/cdplay.c:1566
+#: src/cdplay.c:1827
 msgid "CDStat said no disc\n"
 msgstr ""
 
-#: src/cdplay.c:1715 src/cdplay.c:1737
+#: src/cdplay.c:1988 src/cdplay.c:2011
 #, c-format
 msgid "Current sector: %6d"
 msgstr ""
 
-#: src/cdplay.c:1838
+#: src/cdplay.c:2204
 msgid "No Disc"
 msgstr ""
 
-#: src/cdplay.c:1890
+#: src/cdplay.c:2225
 msgid ""
 "This disc has been found on your secondary server,\n"
 "but not on your primary server.\n"
@@ -727,126 +724,168 @@ msgid ""
 "Do you wish to submit this disc information?"
 msgstr ""
 
-#: src/cdplay.c:1918 src/cdplay.c:1927
+#: src/cdplay.c:2253 src/cdplay.c:2262
 msgid "Error: Unable to create temporary file."
 msgstr ""
 
-#: src/cdplay.c:1945
+#: src/cdplay.c:2281
 msgid "Error: Unable to write disc data."
 msgstr ""
 
-#: src/cdplay.c:1954
+#: src/cdplay.c:2290
 #, c-format
 msgid "Mailing entry to %s\n"
+msgstr ""
+
+#: src/cdplay.c:2311
+msgid "Cannot change tracksets while ripping."
 msgstr ""
 
 #: src/dialog.c:44
 msgid "System Message"
 msgstr ""
 
-#: src/discdb.c:207
+#: src/discdb.c:212
 #, c-format
 msgid "URI is %s\n"
 msgstr ""
 
-#: src/discdb.c:287
+#: src/discdb.c:294
 #, c-format
 msgid "Query is [%s]\n"
 msgstr ""
 
-#: src/discdb.c:788
+#: src/discdb.c:872
 #, c-format
 msgid "Stat error %d on %s\n"
 msgstr ""
 
-#: src/discdb.c:792
+#: src/discdb.c:876
 #, c-format
 msgid "Creating directory %s\n"
 msgstr ""
 
-#: src/discdb.c:797
+#: src/discdb.c:881
 #, c-format
 msgid "Error: %s exists, but is a file\n"
 msgstr ""
 
-#: src/discdb.c:804
+#: src/discdb.c:888
 #, c-format
 msgid "Error: Unable to open %s for writing\n"
 msgstr ""
 
-#: src/discedit.c:67
+#: src/discedit.c:91
 msgid "Disc title"
 msgstr ""
 
-#: src/discedit.c:74 src/discedit.c:176
-msgid "Track name"
-msgstr ""
-
-#: src/discedit.c:84
+#: src/discedit.c:109
 msgid "W"
 msgstr ""
 
-#: src/discedit.c:110
+#: src/discedit.c:134
 msgid "Disc artist"
 msgstr ""
 
-#: src/discedit.c:127
-msgid "ID3 genre:"
+#: src/discedit.c:153
+msgid "ID3 genre"
 msgstr ""
 
-#: src/discedit.c:158
+#: src/discedit.c:184
 msgid "Disc year"
 msgstr ""
 
-#: src/discedit.c:196
+#: src/discedit.c:202
+msgid "Track name"
+msgstr ""
+
+#: src/discedit.c:222
 msgid "Track artist"
 msgstr ""
 
-#: src/discedit.c:213
+#: src/discedit.c:239
 msgid "Split:"
 msgstr ""
 
-#: src/discedit.c:217
+#: src/discedit.c:243
 msgid "Title/Artist"
 msgstr ""
 
-#: src/discedit.c:224
+#: src/discedit.c:250
 msgid "Artist/Title"
 msgstr ""
 
-#: src/discedit.c:232
+#: src/discedit.c:258
 msgid "Split chars"
 msgstr ""
 
-#: src/discedit.c:254
+#: src/discedit.c:278
 msgid "Multi-artist"
 msgstr ""
 
-#: src/discedit.c:265
+#: src/discedit.c:286
+msgid "Edit vtracks"
+msgstr ""
+
+#: src/discedit.c:297
 msgid "Save disc info"
 msgstr ""
 
-#: src/discedit.c:274
+#: src/discedit.c:306
 msgid "Submit disc info"
 msgstr ""
 
-#: src/discedit.c:393
-msgid "No disc present."
+#: src/discedit.c:326
+msgid "Vtrack editing"
 msgstr ""
 
-#: src/discedit.c:543
-msgid "Cannot submit. No disc is present."
+#: src/discedit.c:501
+msgid "frames"
 msgstr ""
 
-#: src/discedit.c:558
-msgid "You must enter a disc title."
+#: src/discedit.c:502 src/discedit.c:509
+msgid "seconds"
 msgstr ""
 
-#: src/discedit.c:565
-msgid "You must enter a disc artist."
+#: src/discedit.c:503
+msgid "minutes"
 msgstr ""
 
-#: src/discedit.c:575
+#: src/discedit.c:522
+msgid "Set VTracknum to "
+msgstr ""
+
+#: src/discedit.c:536
+msgid "Adjust following tracks"
+msgstr ""
+
+#: src/discedit.c:699
+msgid "Error saving disc data"
+msgstr ""
+
+#: src/discedit.c:702
+msgid "Error saving vtrack data"
+msgstr ""
+
+#: src/discedit.c:705
+msgid "No disc present"
+msgstr ""
+
+#: src/discedit.c:861
+msgid ""
+"Cannot submit\n"
+"No disc is present"
+msgstr ""
+
+#: src/discedit.c:876
+msgid "You must enter a disc title"
+msgstr ""
+
+#: src/discedit.c:883
+msgid "You must enter a disc artist"
+msgstr ""
+
+#: src/discedit.c:893
 msgid ""
 "You are about to submit this disc information\n"
 "to a commercial CDDB server, which will then\n"
@@ -857,7 +896,7 @@ msgid ""
 "Continue?"
 msgstr ""
 
-#: src/discedit.c:584
+#: src/discedit.c:902
 msgid ""
 "You are about to submit this\n"
 "disc information via email.\n"
@@ -865,25 +904,25 @@ msgid ""
 "Continue?"
 msgstr ""
 
-#: src/discedit.c:601
+#: src/discedit.c:919
 msgid "Genre selection"
 msgstr ""
 
-#: src/discedit.c:605
+#: src/discedit.c:923
 msgid ""
 "Submission requires a genre other than 'unknown'\n"
 "Please select a DiscDB genre below"
 msgstr ""
 
-#: src/discedit.c:615
+#: src/discedit.c:933
 msgid "DiscDB genre"
 msgstr ""
 
-#: src/discedit.c:635
+#: src/discedit.c:953
 msgid "Submit"
 msgstr ""
 
-#: src/discedit.c:646
+#: src/discedit.c:964
 msgid "Cancel"
 msgstr ""
 
@@ -897,7 +936,7 @@ msgstr ""
 msgid "Error: unable to translate filename. No such user as %s\n"
 msgstr ""
 
-#: src/launch.c:315 src/rip.c:1533
+#: src/launch.c:315 src/rip.c:1553
 msgid "Exec failed\n"
 msgstr ""
 
@@ -961,8 +1000,8 @@ msgstr ""
 msgid "Current sector:      0"
 msgstr ""
 
-#: src/rip.c:204 src/rip.c:221 src/rip.c:269 src/rip.c:862 src/rip.c:915
-#: src/rip.c:917 src/rip.c:1065 src/rip.c:1066
+#: src/rip.c:204 src/rip.c:221 src/rip.c:269 src/rip.c:866 src/rip.c:919
+#: src/rip.c:921 src/rip.c:1069 src/rip.c:1070
 msgid "Rip: Idle"
 msgstr ""
 
@@ -970,7 +1009,7 @@ msgstr ""
 msgid "Enc: Trk 99 (99.9x)"
 msgstr ""
 
-#: src/rip.c:240 src/rip.c:282 src/rip.c:1036 src/rip.c:1050
+#: src/rip.c:240 src/rip.c:282 src/rip.c:1040 src/rip.c:1054
 msgid "Enc: Idle"
 msgstr ""
 
@@ -978,204 +1017,215 @@ msgstr ""
 msgid "Overall indicators:"
 msgstr ""
 
-#: src/rip.c:327
+#: src/rip.c:328
 msgid "Start sector"
 msgstr ""
 
-#: src/rip.c:332
+#: src/rip.c:333
 msgid "End sector"
 msgstr ""
 
-#: src/rip.c:380
+#: src/rip.c:381
 #, c-format
 msgid "Inserting track %d into the ddj database\n"
 msgstr ""
 
-#: src/rip.c:602
+#: src/rip.c:603
 msgid "Error: can't open m3u file."
 msgstr ""
 
-#: src/rip.c:644
+#: src/rip.c:645
 msgid "In KillRip\n"
 msgstr ""
 
-#: src/rip.c:670
+#: src/rip.c:671
 #, c-format
 msgid "Now total enc size is: %d\n"
 msgstr ""
 
-#: src/rip.c:825
+#: src/rip.c:829
 #, c-format
 msgid "Rip: Trk %d (%3.1fx)"
 msgstr ""
 
-#: src/rip.c:858
+#: src/rip.c:862
 #, c-format
 msgid "Rip: %6.2f%%"
 msgstr ""
 
-#: src/rip.c:878
+#: src/rip.c:882
 msgid "Rip finished\n"
 msgstr ""
 
-#: src/rip.c:904
+#: src/rip.c:908
 #, c-format
 msgid "Rip partial %d  num wavs %d\n"
 msgstr ""
 
-#: src/rip.c:907
+#: src/rip.c:911
 #, c-format
 msgid "Next track is %d, total is %d\n"
 msgstr ""
 
-#: src/rip.c:913
+#: src/rip.c:917
 msgid "Check if we need to rip another track\n"
 msgstr ""
 
-#: src/rip.c:955
+#: src/rip.c:959
 #, c-format
 msgid "Enc: Trk %d (%3.1fx)"
 msgstr ""
 
-#: src/rip.c:973
+#: src/rip.c:977
 #, c-format
 msgid "Enc: %6.2f%%"
 msgstr ""
 
-#: src/rip.c:983
+#: src/rip.c:987
 #, c-format
 msgid "Finished encoding on cpu %d\n"
 msgstr ""
 
-#: src/rip.c:1001
+#: src/rip.c:1005
 #, c-format
 msgid "Deleting [%s]\n"
 msgstr ""
 
-#: src/rip.c:1058
+#: src/rip.c:1062
 msgid "Ripping is finished\n"
 msgstr ""
 
-#: src/rip.c:1167 src/rip.c:1173
+#: src/rip.c:1171 src/rip.c:1177
 msgid "NoArtist"
 msgstr ""
 
-#: src/rip.c:1178
+#: src/rip.c:1182
 msgid "NoTitle"
 msgstr ""
 
-#: src/rip.c:1268
+#: src/rip.c:1274
 msgid ""
 "No disc was detected in the drive. If you have a disc in your drive, please "
 "check your CDRom device setting under Config->CD."
 msgstr ""
 
-#: src/rip.c:1277
+#: src/rip.c:1283
 msgid ""
 "Invalid rip executable.\n"
 "Check your rip config, and ensure it specifies the full path to the ripper "
 "executable."
 msgstr ""
 
-#: src/rip.c:1285
+#: src/rip.c:1291
 msgid ""
 "Invalid encoder executable.\n"
 "Check your encoder config, and ensure it specifies the full path to the "
 "encoder executable."
 msgstr ""
 
-#: src/rip.c:1321
+#: src/rip.c:1327
 msgid ""
 "No tracks selected.\n"
 "Rip whole CD?\n"
 msgstr ""
 
-#: src/rip.c:1344
+#: src/rip.c:1352
 msgid "Ripping whole CD\n"
 msgstr ""
 
-#: src/rip.c:1383
+#: src/rip.c:1393
 msgid "In RipNextTrack\n"
 msgstr ""
 
-#: src/rip.c:1390
+#: src/rip.c:1400
 #, c-format
 msgid "First checked track is %d\n"
 msgstr ""
 
-#: src/rip.c:1400
+#: src/rip.c:1411
 msgid "Ripping away!\n"
 msgstr ""
 
-#: src/rip.c:1447
+#: src/rip.c:1460
 msgid "No write access to write wav file"
 msgstr ""
 
-#: src/rip.c:1461
+#: src/rip.c:1474
 #, c-format
 msgid "Ripping track %d to %s\n"
 msgstr ""
 
-#: src/rip.c:1465
+#: src/rip.c:1478
 #, c-format
 msgid "Rip: Trk %d (0.0x)"
 msgstr ""
 
-#: src/rip.c:1470
+#: src/rip.c:1483
 #, c-format
 msgid "File %s has already been ripped. Skipping...\n"
 msgstr ""
 
-#: src/rip.c:1491 src/rip.c:1743
+#: src/rip.c:1504 src/rip.c:1769
 msgid "Out of space in output directory"
 msgstr ""
 
-#: src/rip.c:1567
+#: src/rip.c:1537
+#, c-format
+msgid "ripping: %s "
+msgstr ""
+
+#: src/rip.c:1540
+msgid ""
+"\n"
+"If rip fails, also check the permissions of /dev/sg* and /dev/sr*\n"
+msgstr ""
+
+#: src/rip.c:1587
 msgid "Calling CDPRip\n"
 msgstr ""
 
-#: src/rip.c:1653
+#: src/rip.c:1679
 #, c-format
 msgid "Added track %d to %s list\n"
 msgstr ""
 
-#: src/rip.c:1679
+#: src/rip.c:1705
 msgid "No free cpus\n"
 msgstr ""
 
-#: src/rip.c:1695
+#: src/rip.c:1721
 #, c-format
 msgid "Enc track %d\n"
 msgstr ""
 
-#: src/rip.c:1717
+#: src/rip.c:1743
 msgid "No write access to write encoded file."
 msgstr ""
 
-#: src/rip.c:1728
+#: src/rip.c:1754
 #, c-format
 msgid "%i: Encoding to %s\n"
 msgstr ""
 
-#: src/rip.c:1732
+#: src/rip.c:1758
 #, c-format
 msgid "Enc: Trk %d (0.0x)"
 msgstr ""
 
-#: src/rip.c:1798
+#: src/rip.c:1824
 msgid "In CalculateAll\n"
 msgstr ""
 
-#: src/rip.c:1804
+#: src/rip.c:1830
 msgid "We aren't ripping now, so let's zero encoding values\n"
 msgstr ""
 
-#: src/rip.c:1820
+#: src/rip.c:1846
 #, c-format
 msgid "Total rip size is: %d\n"
 msgstr ""
 
-#: src/rip.c:1821
+#: src/rip.c:1847
 #, c-format
 msgid "Total enc size is: %d\n"
 msgstr ""

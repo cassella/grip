@@ -1928,6 +1928,7 @@ void UpdateDisplay(GripInfo *ginfo)
 	CDStat(&ginfo->Disc,FALSE);
 	
 	if(!disc->disc_present) {
+	  RemoveVTracks(ginfo);
 	  ginfo->have_disc=FALSE;
 	  ginfo->update_required=TRUE;
 	}
