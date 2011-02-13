@@ -10,4 +10,4 @@ src/id3.c
 src/launch.c
 src/parsecfg.c
 src/rip.c
-
+src/vtracks.c
