@@ -1205,7 +1205,7 @@ int vtrack_process_line(Disc *Disc, DiscInstance *vins, char buf[]) {
 
 	if (n + 1 > viins->num_tracks) {
 		if (viins->num_tracks != 0  &&  viins->num_tracks != n) {
-			g_warning("vtrack %d follows vtrack %d, not %d.\n",
+			g_warning(_("vtrack %d follows vtrack %d, not %d.\n"),
 				  n, viins->num_tracks - 1, n - 1);
 			Disc->vtrack_problems = TRUE;
 		}
@@ -1226,7 +1226,7 @@ int vtrack_process_line(Disc *Disc, DiscInstance *vins, char buf[]) {
 	int ostrlen = strlen(vdins->tracks[n].track_name);
 	strncat(vdins->tracks[n].track_name, tname, sizeof(vdins->tracks[n].track_name) - ostrlen);
 	if (strlen(vdins->tracks[n].track_name) != ostrlen + strlen(tname)) {
-	  g_warning("vtrack %d title too long", n);
+	  g_warning(_("vtrack %d title too long"), n);
 	  Disc->vtrack_problems = TRUE;
 	}
 	free(tname);
@@ -1234,7 +1234,7 @@ int vtrack_process_line(Disc *Disc, DiscInstance *vins, char buf[]) {
 	int ostrlen = strlen(vdins->tracks[n].track_artist);
 	strncat(vdins->tracks[n].track_artist, aname, sizeof(vdins->tracks[n].track_artist) - ostrlen);
 	if (strlen(vdins->tracks[n].track_artist) != ostrlen + strlen(aname)) {
-	  g_warning("vtrack %d artist too long", n);
+	  g_warning(_("vtrack %d artist too long"), n);
 	  Disc->vtrack_problems = TRUE;
 	}
 	free(aname);
@@ -1244,7 +1244,7 @@ int vtrack_process_line(Disc *Disc, DiscInstance *vins, char buf[]) {
 			    n, vtracknum);
 		  Disc->vtrack_problems = TRUE;
 	  } else if (vdins->tracks[n].vtracknum != -1) {
-		  g_warning("vtrack %d vtracknum respecified", n);
+		  g_warning(_("vtrack %d vtracknum respecified"), n);
 		  Disc->vtrack_problems = TRUE;
 	  } else {
 		  vdins->tracks[n].vtracknum = vtracknum;
@@ -1272,26 +1272,28 @@ int vtrack_process_line(Disc *Disc, DiscInstance *vins, char buf[]) {
 		strcpy(vdins->tracks[n].track_name, pdins->tracks[start_track].track_name);
 	  }
 	} else {
-	  g_warning("Invalid vtrackinfo VFRAMES line:\n%s", buf);
+	  g_warning(_("Invalid vtrackinfo VFRAMES line:\n%s"), buf);
 	  start_frame = 0; end_frame = 0;
 	  Disc->vtrack_problems = TRUE;
 	}
 
 	if (start_frame < 0) {
-	  g_warning("vtrack %d had start_frame %d, less than 0\n", n, start_frame);
+	  g_warning(_("vtrack %d had start_frame %d, less than 0\n"),
+		    n, start_frame);
 	  start_frame = end_frame = 0;
 	  Disc->vtrack_problems = TRUE;
 	}
 
 	disc_last_frame = piins->tracks[piins->num_tracks].start_frame - 1;
 	if (end_frame > disc_last_frame) {
-	  g_warning("vtrack %d had end_frame %d greater than disc last frame %d\n",
+	  g_warning(_("vtrack %d had end_frame %d greater than "
+		      "disc last frame %d\n"),
 				n, end_frame, disc_last_frame);
 	  end_frame = disc_last_frame;
 	  Disc->vtrack_problems = TRUE;
 	}
 	if (start_frame > end_frame) {
-	  g_warning("vtrack %d had start_frame %d after end_frame %d\n",
+	  g_warning(_("vtrack %d had start_frame %d after end_frame %d\n"),
 				n, start_frame, end_frame);
 	  end_frame = start_frame;
 	  Disc->vtrack_problems = TRUE;
@@ -1303,7 +1305,7 @@ int vtrack_process_line(Disc *Disc, DiscInstance *vins, char buf[]) {
 	int ostrlen = strlen(vdins->title);
 	strncat(vdins->title, dtitle, sizeof(vdins->title) - ostrlen);
 	if (strlen(vdins->title) != ostrlen + strlen(dtitle)) {
-	  g_warning("virtual album title %s... too long", vdins->title);
+	  g_warning(_("virtual album title %s... too long"), vdins->title);
 	  Disc->vtrack_problems = TRUE;
 	}
 	free(dtitle);
@@ -1311,7 +1313,7 @@ int vtrack_process_line(Disc *Disc, DiscInstance *vins, char buf[]) {
 	int ostrlen = strlen(vdins->artist);
 	strncat(vdins->artist, dartist, sizeof(vdins->artist) - ostrlen);
 	if (strlen(vdins->artist) != ostrlen + strlen(dartist)) {
-	  g_warning("virtual album artist %s... too long", vdins->artist);
+	  g_warning(_("virtual album artist %s... too long"), vdins->artist);
 	  Disc->vtrack_problems = TRUE;
 	}
 	free(dartist);
@@ -1323,7 +1325,8 @@ int vtrack_process_line(Disc *Disc, DiscInstance *vins, char buf[]) {
 	/* XXX For now, we'll assume that any "invalid" line with a # in it
 	 * anywhere is a comment. */
   } else {
-	g_warning("Invalid line in vtrack info file: \"%s\"", g_strstrip(buf));
+	g_warning(_("Invalid line in vtrack info file: \"%s\""),
+		  g_strstrip(buf));
 	Disc->vtrack_problems = TRUE;
   }
   return 0;
@@ -1373,13 +1376,8 @@ int DiscDBReadVirtTracksFromvtrackinfo(Disc *Disc, char *root_dir) {
 	fclose(vtrack_data);
 
   } else if (errno != ENOENT) {
-	g_warning("can't open vtrackinfo file %s: %s\n", file, g_strerror(errno));
+	g_warning(_("can't open vtrackinfo file %s: %s\n"), file, g_strerror(errno));
   }
-
-  if (Disc->num_vtrack_sets > 0)
-	printf("Has %d vtrack sets\n", Disc->num_vtrack_sets);
-  else
-	printf("Has no vtrack sets\n");
 
   return 0;
 }
