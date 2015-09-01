@@ -248,7 +248,6 @@ static void add_fake_trailing_vtrack(Disc *Disc, DiscInstance *vins) {
 int VTracksetAddEmpty(Disc *Disc) {
   DiscDataInstance *pdins = &Disc->p_instance.data;
   DiscInstance *vins;
-  DiscInfoInstance *viins;
   DiscDataInstance *vdins;
   int index;
   int n = Disc->num_vtrack_sets++;
@@ -257,7 +256,6 @@ int VTracksetAddEmpty(Disc *Disc) {
 			       Disc->num_vtrack_sets * sizeof (DiscInstance));
 
   vins = &Disc->v_instance[n];
-  viins = &vins->info;
   vdins = &vins->data;
 
   memset(vins, 0, sizeof(DiscInstance));
