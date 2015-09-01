@@ -46,6 +46,7 @@
 #include "grip_id3.h"
 #include "config.h"
 #include "common.h"
+#include "vtracks.h"
 #ifdef CDPAR
 #include "gain_analysis.h"
 #include "cdpar.h"
