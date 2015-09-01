@@ -29,6 +29,7 @@
 #include "discedit.h"
 #include "dialog.h"
 #include "rip.h"
+#include "tray.h"
 #include "grip_id3.h"
 #include "vtracks.h"
 
@@ -161,20 +162,15 @@ static void DoLookup(void *data)
 {
   GripInfo *ginfo = (GripInfo *)data;
   DiscDataInstance *pins = &ginfo->Disc.p_instance.data;
-  gboolean discdb_found=FALSE;
 
   g_assert(ginfo->Disc.v_instance == NULL);
 
   if(!DiscDBLookupDisc(ginfo,&(ginfo->dbserver))) {
     if(*(ginfo->dbserver2.name)) {
       if(DiscDBLookupDisc(ginfo,&(ginfo->dbserver2))) {
-        discdb_found=TRUE;
         ginfo->ask_submit=TRUE;
       }
     }
-  }
-  else {
-    discdb_found=TRUE;
   }
 
   if(pins->id3genre == -1)
@@ -808,10 +804,8 @@ void SelectionChanged(GtkTreeSelection *selection,gpointer data)
   GtkTreeModel *model;
   int row=-1;
   GripInfo *ginfo;
-  GripGUI *uinfo;
 
   ginfo=(GripInfo *)data;
-  uinfo=&(ginfo->gui_info);
 
   if(gtk_tree_selection_get_selected(selection,&model,&iter)) {
     gtk_tree_model_get(model,&iter,TRACKLIST_NUM_COL,&row,-1);

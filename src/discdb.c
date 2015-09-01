@@ -48,9 +48,9 @@
 #include "vtracks.h"
 
 extern char *Program;
-static char *StrConvertEncoding(char *str,char *from,char *to,int max_len);
+static char *StrConvertEncoding(char *str,const char *from,const char *to,int max_len);
 gboolean DiscDBUTF8Validate(const Disc *Disc);
-static void DiscDBConvertEncoding(Disc *Disc,char *from,char *to);
+static void DiscDBConvertEncoding(Disc *Disc,const char *from,const char *to);
 
 static int DiscDBSum(int val);
 static char *DiscDBReadLine(char **dataptr);
@@ -512,7 +512,7 @@ static void DiscDBProcessLine(char *inbuffer, Disc *Disc)
 }
 
  
-static char *StrConvertEncoding(char *str,char *from,char *to,int max_len)
+static char *StrConvertEncoding(char *str,const char *from,const char *to,int max_len)
 {
   char *conv_str;
   gsize rb,wb;
@@ -557,7 +557,8 @@ gboolean DiscDBUTF8Validate(const Disc *Disc)
   return TRUE;
 }
 
-static void DiscDBConvertEncoding(Disc *Disc,char *from,char *to)
+static void DiscDBConvertEncoding(Disc *Disc,
+                                  const char *from,const char *to)
 {
   int track;
   DiscDataInstance *dins = &Disc->instance->data;
