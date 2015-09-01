@@ -104,11 +104,9 @@ void LookupDisc(GripInfo *ginfo,gboolean manual)
   int track;
   gboolean present;
   Disc *Disc = &ginfo->Disc;
-  DiscInfo *disc;
   DiscData *ddata;
   DiscDataInstance *pins;
 
-  disc  = &Disc->info;
   ddata = &Disc->data;
 
   if (!Disc->instance)
@@ -186,11 +184,6 @@ gboolean DiscDBLookupDisc(GripInfo *ginfo,DiscDBServer *server)
   DiscDBQuery query;
   DiscDBEntry entry;
   gboolean success=FALSE;
-  DiscInfo *disc;
-  DiscData *ddata;
-
-  disc  = &ginfo->Disc.info;
-  ddata = &ginfo->Disc.data;
 
   g_assert(ginfo->Disc.v_instance == NULL);
 
@@ -1869,13 +1862,10 @@ void UpdateDisplay(GripInfo *ginfo)
   GripGUI *uinfo;
   DiscInfo *disc;
   TrackInfo *tracks;
-  DiscGuiInstance *gins;
 
   uinfo=&(ginfo->gui_info);
   disc = &ginfo->Disc.info;
   tracks = ginfo->Disc.instance->info.tracks;
-  gins = uinfo->instance;
-
 
   if(!uinfo->minimized) {
     if(uinfo->track_edit_visible) {
@@ -2129,26 +2119,19 @@ void UpdateCurrentTrackset(GripInfo *ginfo) {
 
 void UpdateTracks(GripInfo *ginfo)
 {
-  int track;
   char *col_strings[3];
   gboolean multi_artist_backup;
   gboolean has_vtracks;
   GripGUI *uinfo;
   Disc *Disc;
-  DiscInfo *disc;
-  DiscData *ddata;
   DiscDataInstance *pdins;
-  DiscInfoInstance *piins;
   DiscInstance *ins;
   DiscGuiInstance *gins;
   EncodeTrack enc_track;
 
   uinfo=&(ginfo->gui_info);
   Disc  = &ginfo->Disc;
-  disc  = &Disc->info;
-  ddata = &Disc->data;
   pdins = &Disc->p_instance.data;
-  piins = &Disc->p_instance.info;
 
   g_assert(uinfo->v_instance == NULL);
 
