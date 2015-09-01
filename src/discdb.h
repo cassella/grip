@@ -127,6 +127,7 @@ int DiscDBWriteDiscData(Disc *Disc, FILE *outfile,
 void DiscDBParseTitle(char *buf,char *title,char *artist,char *sep);
 char *ChopWhite(char *buf);
 int DiscDBWriteVTrackData(Disc *Disc, char *encoding);
+void InitTrack(TrackInfo *track, int start_frame, int num_frames);
 void ReinitTrack(TrackInfo *track);
 
 #endif /* GRIP_DISCDB_H */
