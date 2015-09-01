@@ -2313,7 +2313,8 @@ void ChangeTracks(GripInfo *ginfo, DiscInstance *ins, DiscGuiInstance *gins)
 	printf("ChangeTracks: changing to physical\n");
 	VTrackEditPTrackset(&ginfo->gui_info);
   } else {
-	printf("ChangeTracks: changing to virtual set %d\n", ins - ginfo->Disc.v_instance);
+	printf("ChangeTracks: changing to virtual set %d\n",
+	       (int)(ins - ginfo->Disc.v_instance));
 	VTrackEditVTrackset(&ginfo->gui_info);
   }
 
