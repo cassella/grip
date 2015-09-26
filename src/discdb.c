@@ -1012,18 +1012,6 @@ int DiscDBWriteVTrackData(Disc *Disc, char *encoding) {
 			DisplayMsg(_(msg));
 			g_free(msg);
 			Disc->vtrack_problems = TRUE;
-		} else {
-			/* XXX Temp safety */
-			extern void DisplayMsg(char *msg);
-			char *msg;
-
-			strcat(file, "-safe");
-			msg = g_strdup_printf("Warning - Writing vtrackinfo "
-					      "data to\n%s\nbecause vtrackinfo "
-					      "file writing is not fully tested",
-					      file);
-			DisplayMsg(_(msg));
-			g_free(msg);
 		}
 	}
   }
