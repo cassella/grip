@@ -273,6 +273,9 @@ gboolean CDStat(Disc *disc, gboolean read_toc)
         cdsc.cdsc_absaddr.msf.frame;
 
     switch(cdsc.cdsc_audiostatus) {
+    case CDROM_AUDIO_INVALID:
+        info->disc_mode=CDAUDIO_NOSTATUS;
+        break;
     case CDROM_AUDIO_PLAY:
         info->disc_mode=CDAUDIO_PLAYING;
         break;
